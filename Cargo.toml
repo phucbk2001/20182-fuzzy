@@ -1,0 +1,11 @@
+[package]
+name = "fuzzy"
+version = "0.1.0"
+authors = ["quangtung97 <quangtung29121997@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+approx = "*"
+image = "*"
+glium = "*"
+nalgebra = "*"
