@@ -5,7 +5,7 @@ use glium;
 // path: path to image file
 // format: example image::PNG
 #[allow(dead_code)]
-fn load_texture(
+pub fn load_texture(
     path: &str, 
     format: image::ImageFormat, 
     display: &glium::Display) 

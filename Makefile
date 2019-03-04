@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: all test run count
 all: 
 	cargo build
 

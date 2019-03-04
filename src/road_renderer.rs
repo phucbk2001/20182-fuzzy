@@ -111,11 +111,52 @@ impl RoadRenderer {
             &Default::default()).unwrap();
     }
 
-    pub fn add_vertex(&mut self, p: bezier::Point) -> u16 {
+    fn add_vertex(&mut self, p: bezier::Point) -> u16 {
         let index = self.vertices.len();
         let bezier::Point { x, y } = p;
         self.vertices.push(Vertex { position: [x, y] });
         index as u16
+    }
+
+    fn update_from_beziers(
+        &mut self, 
+        road: &road::Road,
+        left: &Vec<road::DirectedBezier>,
+        right: &Vec<road::DirectedBezier>)
+    {
+        let bezier_count = left.len();
+
+        assert!(bezier_count > 0, "Len must not be zero");
+        assert!(
+            bezier_count == right.len(), 
+            "Left and Right must be the same number of Beziers");
+
+        let b1 = road.get_bezier(left[0]);
+        let b2 = road.get_bezier(right[0]);
+
+        let mut index1_prev = self.add_vertex(b1.pos(0.0));
+        let mut index2_prev = self.add_vertex(b2.pos(0.0));
+
+        for i in 0..bezier_count {
+            let b1 = road.get_bezier(left[i]);
+            let b2 = road.get_bezier(right[i]);
+                
+            for k in 0..BEZIER_VCOUNT {
+                let v: f32 = (k + 1) as f32 / BEZIER_VCOUNT as f32;
+
+                let a = b1.pos(v);
+                let b = b2.pos(v);
+
+                let i1 = self.add_vertex(a);
+                let i2 = self.add_vertex(b);
+
+                self.indices.extend_from_slice(
+                    &[index1_prev, index2_prev, i1, i1, index2_prev, i2]);
+
+                index1_prev = i1;
+                index2_prev = i2;
+            }
+        }
     }
 
     #[allow(dead_code)]
@@ -123,41 +164,13 @@ impl RoadRenderer {
         &mut self, display: &Display, 
         road: &road::Road) 
     {
-
-        // Compute lane's triangles
         for lane in &road.lanes {
-            let bezier_count = lane.left.len();
-            assert!(bezier_count > 0, "Len must not be zero");
-            assert!(
-                bezier_count == lane.right.len(), 
-                "Left and Right must be the same number of Beziers");
+            self.update_from_beziers(road, &lane.left, &lane.right);
+        }
 
-            let b1 = road.get_bezier(lane.left[0]);
-            let b2 = road.get_bezier(lane.right[0]);
-
-            let mut index1_prev = self.add_vertex(b1.pos(0.0));
-            let mut index2_prev = self.add_vertex(b2.pos(0.0));
-
-            for i in 0..bezier_count {
-                let b1 = road.get_bezier(lane.left[i]);
-                let b2 = road.get_bezier(lane.right[i]);
-                    
-                for k in 0..BEZIER_VCOUNT {
-                    let v: f32 = (k + 1) as f32 / BEZIER_VCOUNT as f32;
-
-                    let a = b1.pos(v);
-                    let b = b2.pos(v);
-
-                    let i1 = self.add_vertex(a);
-                    let i2 = self.add_vertex(b);
-
-                    self.indices.extend_from_slice(
-                        &[index1_prev, index2_prev, i1, i1, index2_prev, i2]);
-
-                    index1_prev = i1;
-                    index2_prev = i2;
-                }
-            }
+        for cross_section in &road.cross_sections {
+            self.update_from_beziers(
+                road, &cross_section.left, &cross_section.right);
         }
 
         self.update(display);
