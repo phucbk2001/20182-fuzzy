@@ -1,5 +1,8 @@
 use nalgebra as na;
 
+const X2_ROOM_STEP: i32 = 8;
+const MAX_ROOM_SCALE: i32 = 16;
+
 #[allow(dead_code)]
 pub struct Camera {
     position: [f32; 2],
@@ -21,10 +24,14 @@ fn compute_view(position: [f32; 2])
     na::Isometry3::look_at_rh(&eye, &target, &up)
 }
 
-fn compute_projection(camera_size: (f32, f32)) 
+fn compute_projection(
+    camera_size: (f32, f32), room_scale: i32) 
     -> na::Orthographic3<f32>
 {
     let (width, height) = camera_size;
+    let ratio = f32::exp2(room_scale as f32 / X2_ROOM_STEP as f32);
+    let (width, height) = (width * ratio, height * ratio);
+
     na::Orthographic3::new(
         -width / 2.0, width / 2.0, 
         -height / 2.0, height / 2.0,
@@ -33,10 +40,13 @@ fn compute_projection(camera_size: (f32, f32))
 }
 
 fn projection_view_matrix(
-    position: [f32; 2], camera_size: (f32, f32)) 
+    position: [f32; 2], 
+    camera_size: (f32, f32),
+    room_scale: i32,
+    )
     -> na::Matrix4<f32>
 {
-    let proj = compute_projection(camera_size);
+    let proj = compute_projection(camera_size, room_scale);
     let view = compute_view(position);
     proj.as_matrix() * view.to_homogeneous()
 }
@@ -47,7 +57,7 @@ impl Camera {
         let pos = [0.0, 0.0];
 
         let matrix = projection_view_matrix(
-            pos, default_camera_size);
+            pos, default_camera_size, 0);
 
         Self {
             position: pos, 
@@ -57,11 +67,31 @@ impl Camera {
         }
     }
 
+    fn update(&mut self) {
+        self.matrix = projection_view_matrix(
+            self.position, self.camera_size, self.room_scale);
+    }
+
     #[allow(dead_code)]
     pub fn set_camera_size(&mut self, camera_size: (f32, f32)) {
         self.camera_size = camera_size;
-        self.matrix = projection_view_matrix(
-            self.position, self.camera_size);
+        self.update();
+    }
+
+    #[allow(dead_code)]
+    pub fn increase_room_scale(
+        &mut self, room_scale_delta: i32) 
+    {
+        self.room_scale += room_scale_delta;
+
+        if self.room_scale > MAX_ROOM_SCALE {
+            self.room_scale = MAX_ROOM_SCALE;
+        }
+        else if self.room_scale < -MAX_ROOM_SCALE {
+            self.room_scale = -MAX_ROOM_SCALE;
+        }
+
+        self.update();
     }
 
     #[allow(dead_code)]
@@ -81,4 +111,12 @@ fn view_multiply_simple_point() {
     assert_relative_eq!(q.x, 2.0);
     assert_relative_eq!(q.y, -1.0);
     assert_relative_eq!(q.z, -10.0);
+}
+
+#[test]
+fn power_of_two_simple() {
+    use approx::assert_relative_eq;
+
+    assert_relative_eq!(f32::exp2(3.0), 8.0);
+    assert_relative_eq!(f32::exp2(-2.0), 1.0 / 4.0);
 }
