@@ -7,3 +7,6 @@ test:
 
 run:
 	cargo run
+
+count: 
+	fd | grep ".rs" | xargs wc -l

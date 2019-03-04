@@ -3,8 +3,8 @@ use std::ops::{Add, Sub, Mul};
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
 pub struct Point {
-    x: f32,
-    y: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[allow(dead_code)]
@@ -96,16 +96,18 @@ fn mul_point_left() {
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
 pub struct Bezier {
-    a: Point,
-    b: Point,
-    c: Point
+    pub a: Point,
+    pub b: Point,
+    pub c: Point,
 }
 
-#[allow(dead_code)]
-pub fn bezier_pos(curve: Bezier, s: f32) -> Point {
-    let u = 1.0 - s;
-    let v = s;
-    curve.a * u * u + curve.b * 2.0 * u * v + curve.c * v * v
+impl Bezier {
+    #[allow(dead_code)]
+    pub fn pos(self, s: f32) -> Point {
+        let u = 1.0 - s;
+        let v = s;
+        self.a * u * u + self.b * 2.0 * u * v + self.c * v * v
+    }
 }
 
 #[test]
@@ -116,7 +118,7 @@ fn bezier_pos_middle() {
     let b = Point { x: 2.0, y: 4.0 };
     let c = Point { x: 3.0, y: 6.0 };
     let curve = Bezier { a: a, b: b, c: c};
-    let m = bezier_pos(curve, 0.5);
+    let m = curve.pos(0.5);
 
     assert_relative_eq!(m.x, 2.0);
     assert_relative_eq!(m.y, 4.0);
