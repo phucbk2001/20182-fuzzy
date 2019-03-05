@@ -77,7 +77,7 @@ impl RoadRenderer {
                 0
             ).unwrap(),
             program: program,
-            road_color: [0.2, 0.2, 0.2],
+            road_color: [0.4, 0.4, 0.7],
         }
     }
 

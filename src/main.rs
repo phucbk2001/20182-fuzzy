@@ -7,6 +7,16 @@ mod camera;
 mod road;
 mod context;
 
+use std::time::Instant;
+
+#[allow(dead_code)]
+fn print_fps(prev: &mut Instant) {
+    let current = Instant::now();
+    let d = current.duration_since(*prev);
+    println!("FPS: {}", 1_000_000_000 / d.subsec_nanos() as u64);
+    *prev = current;
+}
+
 fn main() {
     use glium;
     use glium::glutin;
@@ -20,10 +30,12 @@ fn main() {
     
     let mut context = context::Context::new(&display);
 
+    #[allow(unused_variables, unused_mut)]
+    let mut prev_instant = Instant::now();
     let mut closed: bool = false;
     while !closed {
         let mut target = display.draw();
-        target.clear_color(1.0, 1.0, 1.0, 1.0);
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
 
         let dims = target.get_dimensions();
         context.camera.set_camera_size(
@@ -43,5 +55,7 @@ fn main() {
                 _ => (),
             }
         });
+
+        // print_fps(&mut prev_instant);
     }
 }

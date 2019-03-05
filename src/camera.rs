@@ -1,7 +1,8 @@
 use nalgebra as na;
 
 const X2_ROOM_STEP: i32 = 8;
-const MAX_ROOM_SCALE: i32 = 16;
+const MAX_ROOM_IN: i32 = 16;
+const MAX_ROOM_OUT: i32 = 32;
 
 #[allow(dead_code)]
 pub struct Camera {
@@ -84,11 +85,11 @@ impl Camera {
     {
         self.room_scale += room_scale_delta;
 
-        if self.room_scale > MAX_ROOM_SCALE {
-            self.room_scale = MAX_ROOM_SCALE;
+        if self.room_scale > MAX_ROOM_OUT {
+            self.room_scale = MAX_ROOM_OUT;
         }
-        else if self.room_scale < -MAX_ROOM_SCALE {
-            self.room_scale = -MAX_ROOM_SCALE;
+        else if self.room_scale < -MAX_ROOM_IN {
+            self.room_scale = -MAX_ROOM_IN;
         }
 
         self.update();
