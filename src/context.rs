@@ -28,13 +28,33 @@ impl<'a> Context<'a> {
 
         let location_a = backbone.add_location("A");
         let location_b = backbone.add_location("B");
+        let location_c = backbone.add_location("C");
+        let location_d = backbone.add_location("D");
 
-        let p1 = backbone.add_point((40.0, -20.0), (-3.0, 0.0));
-        let p2 = backbone.add_point((10.0, -10.0), (-2.0, 1.0));
-        let p3 = backbone.add_point((-10.0, 10.0), (-1.0, 2.0));
-        let p4 = backbone.add_point((-13.0, 30.0), (0.0, 5.0));
+        let p1 = backbone.add_point((-20.0, -40.0), (0.0, 3.0));
+        let p2 = backbone.add_point((-10.0, -10.0), (1.0, 2.0));
+        let p3 = backbone.add_point((0.0, 0.0), (2.0, 1.0));
+        let p4 = backbone.add_point((30.0, 13.0), (1.0, 0.0));
+        let p5 = backbone.add_point((13.0, 30.0), (0.0, 1.0));
+        let p6 = backbone.add_point((70.0, 13.0), (1.0, 0.0));
+        let p7 = backbone.add_point((13.0, 30.0), (0.0, -1.0));
+        let p8 = backbone.add_point((7.0, 60.0), (-0.5, 1.0));
 
-        backbone.add_road(location_a, location_b, &[p1, p2, p3, p4]);
+        backbone.add_road(location_a, location_b, &[p1, p2, p3]);
+        backbone.add_road(location_b, location_c, &[p4, p6]);
+        backbone.add_road(location_b, location_d, &[p5, p8]);
+
+        backbone.add_cross_section(
+            location_a, location_b, location_c,
+            &[p3, p4]);
+
+        backbone.add_cross_section(
+            location_a, location_b, location_d,
+            &[p3, p5]);
+
+        backbone.add_cross_section(
+            location_d, location_b, location_c,
+            &[p7, p4]);
 
         let road = Road::from(&backbone, &config);
 

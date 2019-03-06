@@ -317,6 +317,67 @@ impl Road {
             lanes.push(right_lane);
         }
 
+        for s in &backbone.cross_sections {
+            let mut left_section = CrossSection {
+                from: s.to,
+                across: s.across,
+                to: s.from,
+                left: vec![],
+                right: vec![],
+            };
+
+            let mut right_section = CrossSection {
+                from: s.from,
+                across: s.across,
+                to: s.to,
+                left: vec![],
+                right: vec![],
+            };
+
+            let mut point_it = s.points.iter().map(map_func);
+            let mut prev_three_points: ThreePoints = point_it.next().unwrap();
+            let mut prev_three_point_ids = 
+                add_three_points(&mut points, prev_three_points);
+
+            for three_points in point_it {
+                let three_point_ids = add_three_points(&mut points, three_points);
+
+                let bezier_ids = 
+                    add_bezier_from_two_three_points(
+                        &mut beziers,
+                        prev_three_points, prev_three_point_ids,
+                        three_points, three_point_ids
+                    );
+
+                left_section.left.push(DirectedBezier {
+                    bezier_id: bezier_ids.left_id,
+                    is_forward: false,
+                });
+                left_section.right.push(DirectedBezier {
+                    bezier_id: bezier_ids.middle_id,
+                    is_forward: false,
+                });
+
+                right_section.left.push(DirectedBezier {
+                    bezier_id: bezier_ids.middle_id, 
+                    is_forward: true,
+                });
+                right_section.right.push(DirectedBezier {
+                    bezier_id: bezier_ids.right_id,
+                    is_forward: true,
+                });
+
+                prev_three_points = three_points;
+                prev_three_point_ids = three_point_ids;
+            }
+
+            left_section.left.reverse();
+            left_section.right.reverse();
+
+            cross_sections.push(left_section);
+            cross_sections.push(right_section);
+        }
+
         Self {
             locations: locations,
             points: points,

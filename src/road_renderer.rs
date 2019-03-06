@@ -30,11 +30,15 @@ pub fn pos(x: f32, y: f32) -> Vertex {
 pub struct RoadRenderer {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u16>,
+    pub border_indices: Vec<u16>,
 
     vertex_buffer: VertexBuffer<Vertex>,
     index_buffer: IndexBuffer<u16>,
+    border_index_buffer: IndexBuffer<u16>,
+
     program: Program,
     pub road_color: [f32; 3],
+    pub border_color: [f32; 3],
 }
 
 const BEZIER_VCOUNT: u32 = 16;
@@ -55,10 +59,10 @@ const FRAGMENT_SHADER_SRC: &'static str = r#"
     #version 140
     out vec4 color;
 
-    uniform vec3 road_color;
+    uniform vec3 input_color;
 
     void main() {
-        color = vec4(road_color, 1.0);
+        color = vec4(input_color, 1.0);
     }
 "#;
 
@@ -70,14 +74,21 @@ impl RoadRenderer {
         Self {
             vertices: vec![],
             indices: vec![],
+            border_indices: vec![],
             vertex_buffer: VertexBuffer::empty(display, 0).unwrap(),
             index_buffer: IndexBuffer::empty(
                 display,
                 glium::index::PrimitiveType::TrianglesList,
                 0
             ).unwrap(),
+            border_index_buffer: IndexBuffer::empty(
+                display,
+                glium::index::PrimitiveType::LinesList,
+                0
+            ).unwrap(),
             program: program,
-            road_color: [0.4, 0.4, 0.7],
+            road_color: [0.4, 0.4, 0.4],
+            border_color: [0.0, 0.5, 0.0],
         }
     }
 
@@ -91,6 +102,11 @@ impl RoadRenderer {
             glium::index::PrimitiveType::TrianglesList,
             &self.indices
         ).unwrap();
+        self.border_index_buffer = IndexBuffer::new(
+            display,
+            glium::index::PrimitiveType::LinesList,
+            &self.border_indices
+        ).unwrap();
     }
 
     #[allow(dead_code)]
@@ -98,14 +114,25 @@ impl RoadRenderer {
         where T: Surface
     {
         let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
+
         let uniform = uniform! {
             matrix: *matrix_ref,
-            road_color: self.road_color,
+            input_color: self.road_color,
         };
-
         target.draw(
             &self.vertex_buffer,
             &self.index_buffer,
+            &self.program,
+            &uniform, 
+            &Default::default()).unwrap();
+
+        let uniform = uniform! {
+            matrix: *matrix_ref,
+            input_color: self.border_color,
+        };
+        target.draw(
+            &self.vertex_buffer,
+            &self.border_index_buffer,
             &self.program,
             &uniform, 
             &Default::default()).unwrap();
@@ -152,6 +179,9 @@ impl RoadRenderer {
 
                 self.indices.extend_from_slice(
                     &[index1_prev, index2_prev, i1, i1, index2_prev, i2]);
+
+                self.border_indices.extend_from_slice(
+                    &[index1_prev, i1, index2_prev, i2]);
 
                 index1_prev = i1;
                 index2_prev = i2;

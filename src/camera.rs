@@ -20,7 +20,7 @@ fn compute_view(position: [f32; 2])
     let [x, y] = position;
     let eye = na::Point3::new(x, y, 10.0);
     let target = na::Point3::new(x, y, 0.0);
-    let up = na::Vector3::new(-1.0, 0.0, 0.0);
+    let up = na::Vector3::new(0.0, 1.0, 0.0);
 
     na::Isometry3::look_at_rh(&eye, &target, &up)
 }
@@ -109,8 +109,8 @@ fn view_multiply_simple_point() {
     let p = na::Point4::new(1.0, 2.0, 0.0, 1.0);
     let q = view * p;
 
-    assert_relative_eq!(q.x, 2.0);
-    assert_relative_eq!(q.y, -1.0);
+    assert_relative_eq!(q.x, 1.0);
+    assert_relative_eq!(q.y, 2.0);
     assert_relative_eq!(q.z, -10.0);
 }
 

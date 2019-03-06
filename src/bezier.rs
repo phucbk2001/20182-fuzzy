@@ -155,14 +155,19 @@ pub fn intersect_lines(
         [a2, b2],
     ]);
 
-    let du = det([
-        [c1, b1],
-        [c2, b2],
-    ]);
+    if f32::abs(d) <= 0.0001 {
+        (p1 + p2) * 0.5
+    }
+    else {
+        let du = det([
+            [c1, b1],
+            [c2, b2],
+        ]);
 
-    let u = du / d;
+        let u = du / d;
 
-    p1 + u * v1
+        p1 + u * v1
+    }
 }
 
 pub fn turn_left_90_degree(v: Point) -> Point {
