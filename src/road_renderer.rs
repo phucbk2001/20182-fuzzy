@@ -212,6 +212,10 @@ impl RoadRenderer {
     pub fn render<T>(&self, target: &mut T, matrix: &na::Matrix4<f32>) 
         where T: Surface
     {
+        use glium::draw_parameters::DrawParameters;
+        let mut params: DrawParameters = Default::default();
+        params.line_width = Some(1.0);
+
         let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
 
         let uniform = uniform! {
@@ -223,7 +227,7 @@ impl RoadRenderer {
             &self.index_buffer,
             &self.program,
             &uniform, 
-            &Default::default()).unwrap();
+            &params).unwrap();
 
         let uniform = uniform! {
             matrix: *matrix_ref,
@@ -234,18 +238,19 @@ impl RoadRenderer {
             &self.border_index_buffer,
             &self.program,
             &uniform, 
-            &Default::default()).unwrap();
+            &params).unwrap();
 
         let uniform = uniform! {
             matrix: *matrix_ref,
             input_color: self.chosen_color,
         };
+        params.line_width = Some(3.0);
         target.draw(
             &self.vertex_buffer,
             &self.chosen_index_buffer,
             &self.program,
             &uniform, 
-            &Default::default()).unwrap();
+            &params).unwrap();
     }
 
     fn add_vertex(&mut self, p: bezier::Point) -> u16 {
@@ -275,6 +280,9 @@ impl RoadRenderer {
         let mut index1_prev = self.add_vertex(b1.pos(0.0));
         let mut index2_prev = self.add_vertex(b2.pos(0.0));
 
+        self.border_indices.extend_from_slice(
+            &[index1_prev, index2_prev]);
+
         for i in 0..bezier_count {
             let b1 = road.get_bezier(left[i]);
             let b2 = road.get_bezier(right[i]);
@@ -301,6 +309,9 @@ impl RoadRenderer {
                 index2_prev = i2;
             }
         }
+
+        self.border_indices.extend_from_slice(
+            &[index1_prev, index2_prev]);
     }
 
     #[allow(dead_code)]

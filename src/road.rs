@@ -294,11 +294,11 @@ impl Road {
                         three_points, three_point_ids
                     );
 
-                left_lane.left.push(DirectedBezier {
+                left_lane.right.push(DirectedBezier {
                     bezier_id: bezier_ids.left_id,
                     is_forward: false,
                 });
-                left_lane.right.push(DirectedBezier {
+                left_lane.left.push(DirectedBezier {
                     bezier_id: bezier_ids.middle_id,
                     is_forward: false,
                 });
@@ -355,11 +355,11 @@ impl Road {
                         three_points, three_point_ids
                     );
 
-                left_section.left.push(DirectedBezier {
+                left_section.right.push(DirectedBezier {
                     bezier_id: bezier_ids.left_id,
                     is_forward: false,
                 });
-                left_section.right.push(DirectedBezier {
+                left_section.left.push(DirectedBezier {
                     bezier_id: bezier_ids.middle_id,
                     is_forward: false,
                 });
