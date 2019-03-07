@@ -36,20 +36,6 @@ fn main() {
     let mut prev_instant = Instant::now();
     let mut closed: bool = false;
     while !closed {
-        let mut target = display.draw();
-        target.clear_color(0.0, 0.0, 0.0, 1.0);
-
-        let dims = target.get_dimensions();
-        context.camera.set_camera_size(
-            context.config.get_camera_size(dims));
-
-        context.road_renderer.render(
-            &mut target, context.camera.get_matrix());
-
-        target.finish().unwrap();
-
-        context.car_system.update();
-
         events_loop.poll_events(|e| {
             match e {
                 glutin::Event::WindowEvent { event, .. } => match event {
@@ -59,6 +45,17 @@ fn main() {
                 _ => (),
             }
         });
+
+        context.update(&display);
+
+        let mut target = display.draw();
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
+
+        context.render(&mut target);
+
+        target.finish().unwrap();
+
+        context.finish();
 
         // print_fps(&mut prev_instant);
     }

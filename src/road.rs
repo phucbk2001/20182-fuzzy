@@ -64,6 +64,9 @@ pub struct Road {
     pub beziers: Vec<Bezier>,
     pub lanes: Vec<Lane>,
     pub cross_sections: Vec<CrossSection>,
+
+    pub chosen_path: Vec<LocationId>,
+    prev_chosen_path: Vec<LocationId>,
 }
 
 // To construct the whole map
@@ -390,7 +393,18 @@ impl Road {
             beziers: beziers,
             lanes: lanes,
             cross_sections: cross_sections,
+
+            chosen_path: vec![],
+            prev_chosen_path: vec![],
         }
+    }
+
+    pub fn chosen_path_changed(&self) -> bool {
+        self.prev_chosen_path != self.chosen_path
+    }
+
+    pub fn finish(&mut self) {
+        self.prev_chosen_path = self.chosen_path.clone();
     }
 }
 

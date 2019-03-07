@@ -82,7 +82,7 @@ impl CarSystem {
             let v = car.direction * car.velocity;
             car.position = pos + v * d;
 
-            println!("Car: {} {}", car.position.x, car.position.y);
+            // println!("Car: {} {}", car.position.x, car.position.y);
         }
 
         self.prev_instant = current;

@@ -8,6 +8,7 @@ use crate::car::{CarSystem, Car};
 
 use glium::Display;
 use glium::glutin;
+use glium::Surface;
 
 #[allow(dead_code)]
 pub struct Context<'a> {
@@ -25,7 +26,6 @@ impl<'a> Context<'a> {
         let camera = Camera::new(
             config.get_camera_size((100, 100))
         );
-        let mut road_renderer = RoadRenderer::new(&display);
 
         let mut backbone = Backbone::new();
 
@@ -59,11 +59,13 @@ impl<'a> Context<'a> {
             location_d, location_b, location_c,
             &[p7, p4]);
 
-        let road = Road::from(&backbone, &config);
+        let mut road = Road::from(&backbone, &config);
 
-        road_renderer.update_from(display, &road);
-        road_renderer.update_chosen_path(display,
-            &[location_a, location_b, location_c]);
+        let road_renderer = RoadRenderer::from(
+            &display, &road);
+
+        road.chosen_path = 
+            vec![location_a, location_b, location_c];
 
         let mut car_system = CarSystem::new();
         let car = Car::from_path(&road, &[location_a, location_b]);
@@ -80,6 +82,26 @@ impl<'a> Context<'a> {
         }
     }
 
+    pub fn update(&mut self, display: &Display) {
+        self.car_system.update();
+        self.road_renderer.update(display, &self.road);
+    }
+
+    pub fn finish(&mut self) {
+        self.road.finish();
+    }
+
+    pub fn render<T>(&mut self, target: &mut T) 
+        where T: Surface
+    {
+        let dims = target.get_dimensions();
+        self.camera.set_camera_size(
+            self.config.get_camera_size(dims));
+
+        self.road_renderer.render(
+            target, self.camera.get_matrix());
+    }
+
     fn handle_mouse_wheel(&mut self, event: glutin::MouseScrollDelta) {
         use glutin::MouseScrollDelta::LineDelta;
         match event {
@@ -94,7 +116,6 @@ impl<'a> Context<'a> {
         // println!("CursorMoved: {} {}", x, y);
     }
 
-    #[allow(dead_code)]
     pub fn handle_event(&mut self, event: glutin::WindowEvent) {
         use glutin::WindowEvent::{
             MouseWheel,

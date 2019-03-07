@@ -4,7 +4,6 @@ const X2_ROOM_STEP: i32 = 8;
 const MAX_ROOM_IN: i32 = 16;
 const MAX_ROOM_OUT: i32 = 32;
 
-#[allow(dead_code)]
 pub struct Camera {
     position: [f32; 2],
     room_scale: i32,
@@ -13,7 +12,6 @@ pub struct Camera {
     matrix: na::Matrix4<f32>
 }
 
-#[allow(dead_code)]
 fn compute_view(position: [f32; 2]) 
     -> na::Isometry3<f32>
 {
@@ -53,7 +51,6 @@ fn projection_view_matrix(
 }
 
 impl Camera {
-    #[allow(dead_code)]
     pub fn new(default_camera_size: (f32, f32)) -> Self {
         let pos = [0.0, 0.0];
 
@@ -73,13 +70,11 @@ impl Camera {
             self.position, self.camera_size, self.room_scale);
     }
 
-    #[allow(dead_code)]
     pub fn set_camera_size(&mut self, camera_size: (f32, f32)) {
         self.camera_size = camera_size;
         self.update();
     }
 
-    #[allow(dead_code)]
     pub fn increase_room_scale(
         &mut self, room_scale_delta: i32) 
     {
@@ -95,7 +90,6 @@ impl Camera {
         self.update();
     }
 
-    #[allow(dead_code)]
     pub fn get_matrix(&self) -> &na::Matrix4<f32> {
         &self.matrix
     }
