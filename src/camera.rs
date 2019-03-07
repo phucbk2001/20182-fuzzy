@@ -1,4 +1,6 @@
 use nalgebra as na;
+use crate::bezier;
+use crate::config;
 
 const X2_ROOM_STEP: i32 = 8;
 const MAX_ROOM_IN: i32 = 16;
@@ -6,7 +8,11 @@ const MAX_ROOM_OUT: i32 = 32;
 
 pub struct Camera {
     position: [f32; 2],
+
     room_scale: i32,
+    room_scale_value: f32,
+    
+    dimensions: (u32, u32),
     camera_size: (f32, f32),
 
     matrix: na::Matrix4<f32>
@@ -24,12 +30,11 @@ fn compute_view(position: [f32; 2])
 }
 
 fn compute_projection(
-    camera_size: (f32, f32), room_scale: i32) 
+    camera_size: (f32, f32), scale: f32) 
     -> na::Orthographic3<f32>
 {
     let (width, height) = camera_size;
-    let ratio = f32::exp2(room_scale as f32 / X2_ROOM_STEP as f32);
-    let (width, height) = (width * ratio, height * ratio);
+    let (width, height) = (width * scale, height * scale);
 
     na::Orthographic3::new(
         -width / 2.0, width / 2.0, 
@@ -41,11 +46,11 @@ fn compute_projection(
 fn projection_view_matrix(
     position: [f32; 2], 
     camera_size: (f32, f32),
-    room_scale: i32,
+    scale: f32,
     )
     -> na::Matrix4<f32>
 {
-    let proj = compute_projection(camera_size, room_scale);
+    let proj = compute_projection(camera_size, scale);
     let view = compute_view(position);
     proj.as_matrix() * view.to_homogeneous()
 }
@@ -55,23 +60,37 @@ impl Camera {
         let pos = [0.0, 0.0];
 
         let matrix = projection_view_matrix(
-            pos, default_camera_size, 0);
+            pos, default_camera_size, 1.0);
 
         Self {
             position: pos, 
             room_scale: 0,
+            room_scale_value: 1.0,
+            dimensions: (600, 600),
             camera_size: default_camera_size,
             matrix: matrix,
         }
     }
 
     fn update(&mut self) {
+        self.room_scale_value = f32::exp2(
+            self.room_scale as f32 / X2_ROOM_STEP as f32);
+
         self.matrix = projection_view_matrix(
-            self.position, self.camera_size, self.room_scale);
+            self.position, self.camera_size, 
+            self.room_scale_value);
     }
 
-    pub fn set_camera_size(&mut self, camera_size: (f32, f32)) {
-        self.camera_size = camera_size;
+    pub fn set_dimensions(
+        &mut self, dims: (u32, u32), config: &config::Config) 
+    {
+        self.dimensions = dims;
+
+        let (w, h) = dims;
+        let ratio = w as f32 / h as f32;
+        let height = config.camera_width / ratio;
+
+        self.camera_size = (config.camera_width, height);
         self.update();
     }
 
@@ -92,6 +111,21 @@ impl Camera {
 
     pub fn get_matrix(&self) -> &na::Matrix4<f32> {
         &self.matrix
+    }
+
+    pub fn screen_coords_to_world(
+        &self, x: f32, y: f32) -> bezier::Point
+    {
+        let (w, h) = self.dimensions;
+        let w = w as f32;
+        let h = h as f32;
+
+        let x = 2.0 * x / w - 1.0;
+        let y = 1.0 - 2.0 * y / h;
+        let (camera_width, camera_height) = self.camera_size;
+        let x = x * camera_width / 2.0 * self.room_scale_value;
+        let y = y * camera_height / 2.0 * self.room_scale_value;
+        bezier::Point{ x: x, y: y }
     }
 }
 

@@ -24,7 +24,7 @@ impl<'a> Context<'a> {
     pub fn new(display: &'a Display) -> Self {
         let config = Config::new();
         let camera = Camera::new(
-            config.get_camera_size((100, 100))
+            (config.camera_width, config.camera_width)
         );
 
         let mut backbone = Backbone::new();
@@ -95,8 +95,7 @@ impl<'a> Context<'a> {
         where T: Surface
     {
         let dims = target.get_dimensions();
-        self.camera.set_camera_size(
-            self.config.get_camera_size(dims));
+        self.camera.set_dimensions(dims, &self.config);
 
         self.road_renderer.render(
             target, self.camera.get_matrix());
