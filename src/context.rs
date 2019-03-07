@@ -4,6 +4,8 @@ use crate::road_renderer::RoadRenderer;
 
 use crate::road::{Road, Backbone};
 
+use crate::car::{CarSystem, Car};
+
 use glium::Display;
 use glium::glutin;
 
@@ -14,6 +16,7 @@ pub struct Context<'a> {
     pub camera: Camera,
     pub road: Road,
     pub road_renderer: RoadRenderer,
+    pub car_system: CarSystem,
 }
 
 impl<'a> Context<'a> {
@@ -62,12 +65,18 @@ impl<'a> Context<'a> {
         road_renderer.update_chosen_path(display,
             &[location_a, location_b, location_c]);
 
+        let mut car_system = CarSystem::new();
+        let car = Car::from_path(&road, &[location_a, location_b]);
+
+        car_system.add(car);
+
         Self {
             display: display,
             config: config,
             camera: camera,
             road: road,
             road_renderer: road_renderer,
+            car_system: car_system,
         }
     }
 

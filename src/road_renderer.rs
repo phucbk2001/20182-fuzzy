@@ -13,7 +13,6 @@ use crate::road;
 
 use road::LocationId;
 
-#[allow(dead_code)]
 #[derive(Copy, Clone)]
 pub struct Vertex {
     position: [f32; 2],
@@ -21,7 +20,6 @@ pub struct Vertex {
 
 implement_vertex!(Vertex, position);
 
-#[allow(dead_code)]
 pub fn pos(x: f32, y: f32) -> Vertex {
     Vertex {
         position: [x, y],
@@ -158,7 +156,6 @@ const FRAGMENT_SHADER_SRC: &'static str = r#"
 "#;
 
 impl RoadRenderer {
-    #[allow(dead_code)]
     pub fn new(display: &Display) -> Self {
         let program = glium::Program::from_source(
             display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();

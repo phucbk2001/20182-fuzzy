@@ -16,6 +16,10 @@ impl Point {
         let y = self.y;
         f32::sqrt(x * x + y * y)
     }
+
+    pub fn normalize(self) -> Self {
+        self * (1.0 / self.len())
+    }
 }
 
 impl From<(f32, f32)> for Point {
@@ -125,6 +129,12 @@ impl Bezier {
         let u = 1.0 - s;
         let v = s;
         self.a * u * u + self.b * 2.0 * u * v + self.c * v * v
+    }
+
+    pub fn direction(self, s: f32) -> Point {
+        (self.a * 2.0 * s - self.a * 2.0 + 
+            self.b * 2.0 - self.b * 4.0 * s +
+            self.c * 2.0 * s).normalize()
     }
 }
 

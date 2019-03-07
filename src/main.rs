@@ -6,6 +6,8 @@ mod road_renderer;
 mod camera;
 mod road;
 mod context;
+mod car;
+mod car_renderer;
 
 use std::time::Instant;
 
@@ -45,6 +47,8 @@ fn main() {
             &mut target, context.camera.get_matrix());
 
         target.finish().unwrap();
+
+        context.car_system.update();
 
         events_loop.poll_events(|e| {
             match e {
