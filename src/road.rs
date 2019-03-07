@@ -14,6 +14,12 @@ pub struct LocationId {
     pub id: usize,
 }
 
+impl PartialEq for LocationId {
+    fn eq(&self, other: &LocationId) -> bool {
+        self.id == other.id
+    }
+}
+
 #[derive(Copy, Clone)]
 pub struct BezierId {
     pub id: usize,

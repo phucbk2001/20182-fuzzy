@@ -59,6 +59,8 @@ impl<'a> Context<'a> {
         let road = Road::from(&backbone, &config);
 
         road_renderer.update_from(display, &road);
+        road_renderer.update_chosen_path(display,
+            &[location_a, location_b, location_c]);
 
         Self {
             display: display,
