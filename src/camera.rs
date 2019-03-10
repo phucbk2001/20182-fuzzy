@@ -7,6 +7,7 @@ const MAX_ROOM_IN: i32 = 16;
 const MAX_ROOM_OUT: i32 = 32;
 
 pub struct Camera {
+    old_position: [f32; 2],
     position: [f32; 2],
 
     room_scale: i32,
@@ -63,6 +64,7 @@ impl Camera {
             pos, default_camera_size, 1.0);
 
         Self {
+            old_position: pos,
             position: pos, 
             room_scale: 0,
             room_scale_value: 1.0,
@@ -126,6 +128,22 @@ impl Camera {
         let x = x * camera_width / 2.0 * self.room_scale_value;
         let y = y * camera_height / 2.0 * self.room_scale_value;
         bezier::Point{ x: x, y: y }
+    }
+
+    pub fn get_old_position(&self) -> bezier::Point {
+        let [x, y] = self.old_position;
+        bezier::Point { x: x, y: y }
+    }
+
+    pub fn set_temp_position(&mut self, p: bezier::Point) {
+        self.position = [p.x, p.y];
+        self.update();
+    }
+
+    pub fn set_position(&mut self, p: bezier::Point) {
+        self.position = [p.x, p.y];
+        self.old_position = self.position;
+        self.update();
     }
 }
 

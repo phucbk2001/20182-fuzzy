@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::window::{WindowSystem, DragEvent, root_id};
 use crate::camera::Camera;
 use crate::road_renderer::RoadRenderer;
 
@@ -6,26 +7,45 @@ use crate::road::{Road, Backbone};
 
 use crate::car::{CarSystem, Car};
 
+use crate::action::{Action, CameraAction};
+
 use glium::Display;
-use glium::glutin;
 use glium::Surface;
 
 #[allow(dead_code)]
 pub struct Context<'a> {
     pub display: &'a Display,
     pub config: Config,
+    pub window_system: WindowSystem,
     pub camera: Camera,
     pub road: Road,
     pub road_renderer: RoadRenderer,
     pub car_system: CarSystem,
 }
 
+fn on_scroll(v: f32, actions: &mut Vec<Action>) {
+    actions.push(Action::Camera(CameraAction::Zoom(-v as i32)));
+}
+
+fn camera_on_drag(event: DragEvent, actions: &mut Vec<Action>) {
+    let action = CameraAction::Drag {
+        from: event.from,
+        to: event.to,
+        completed: event.completed,
+    };
+    actions.push(Action::Camera(action));
+}
+
 impl<'a> Context<'a> {
     pub fn new(display: &'a Display) -> Self {
         let config = Config::new();
+        let mut window_system = WindowSystem::new();
         let camera = Camera::new(
             (config.camera_width, config.camera_width)
         );
+        window_system.set_on_scroll(Box::new(on_scroll));
+        let window = root_id();
+        window_system.set_on_drag(window, Box::new(camera_on_drag));
 
         let mut backbone = Backbone::new();
 
@@ -74,6 +94,7 @@ impl<'a> Context<'a> {
 
         Self {
             display: display,
+            window_system: window_system,
             config: config,
             camera: camera,
             road: road,
@@ -99,33 +120,5 @@ impl<'a> Context<'a> {
 
         self.road_renderer.render(
             target, self.camera.get_matrix());
-    }
-
-    fn handle_mouse_wheel(&mut self, event: glutin::MouseScrollDelta) {
-        use glutin::MouseScrollDelta::LineDelta;
-        match event {
-            LineDelta(_h, v) => {
-                self.camera.increase_room_scale(-v as i32);
-            },
-            _ => (), 
-        }
-    }
-
-    fn handle_cursor_moved(&mut self, _x: f64, _y: f64) {
-        // println!("CursorMoved: {} {}", x, y);
-    }
-
-    pub fn handle_event(&mut self, event: glutin::WindowEvent) {
-        use glutin::WindowEvent::{
-            MouseWheel,
-            CursorMoved,
-        };
-        match event {
-            MouseWheel { delta, .. } => 
-                self.handle_mouse_wheel(delta),
-            CursorMoved { position, .. } => 
-                self.handle_cursor_moved(position.x, position.y),
-            _ => (),
-        }
     }
 }

@@ -8,6 +8,9 @@ mod road;
 mod context;
 mod car;
 mod car_renderer;
+mod window;
+mod action;
+mod reducer;
 
 use std::time::Instant;
 
@@ -36,14 +39,18 @@ fn main() {
     let mut prev_instant = Instant::now();
     let mut closed: bool = false;
     while !closed {
+        let mut actions: Vec<action::Action> = Vec::new();
         events_loop.poll_events(|e| {
+            actions.clear();
             match e {
                 glutin::Event::WindowEvent { event, .. } => match event {
                     glutin::WindowEvent::CloseRequested => closed = true,
-                    _ => context.handle_event(event),
+                    _ => window::handle_event(
+                        &mut context, event, &mut actions),
                 },
                 _ => (),
             }
+            reducer::reduce(&mut context, &actions);
         });
 
         context.update(&display);
