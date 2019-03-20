@@ -1,12 +1,18 @@
 use nalgebra as na;
 
+use crate::config::Config;
+use crate::glhelper;
+use crate::car::CarSystem;
+
+use image;
+
 use glium::implement_vertex;
 use glium::uniform;
 use glium::{
     Program, Display, 
-    VertexBuffer, IndexBuffer,
     Surface,
 };
+use glium::texture::Texture2d;
 
 #[derive(Copy, Clone)]
 struct Vertex {
@@ -45,42 +51,90 @@ const FRAGMENT_SHADER_SRC: &'static str = r#"
     }
 "#;
 
+type VertexBuffer = glium::VertexBuffer<Vertex>;
+type IndexBuffer = glium::IndexBuffer<u16>;
+
 pub struct CarRenderer {
-    vertex_buffer: VertexBuffer<Vertex>,
-    index_buffer: IndexBuffer<u16>,
+    vertex_buffers: Vec<VertexBuffer>,
+    index_buffers: Vec<IndexBuffer>,
+    textures: Vec<Texture2d>,
     program: Program,
 }
 
 impl CarRenderer {
-    pub fn new(display: &Display) -> Self {
+    pub fn new(display: &Display, config: &Config) -> Self {
         let program = glium::Program::from_source(
             display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
 
+        let width = config.car_width;
+        let length = config.car_length;
+
+        let vertices = vec![
+            Vertex { position: [width/2.0, -length/2.0], tex_coords: [1.0, 1.0] },
+            Vertex { position: [width/2.0, length/2.0], tex_coords: [0.0, 1.0] },
+            Vertex { position: [-width/2.0, length/2.0], tex_coords: [0.0, 0.0] },
+            Vertex { position: [-width/2.0, -length/2.0], tex_coords: [1.0, 0.0] },
+        ];
+
+        let vertex_buffer = VertexBuffer::new(
+            display, 
+            &vertices,
+        ).unwrap();
+
+        let indices: Vec<u16> = vec![0, 1, 2, 2, 3, 0];
+
+        let index_buffer = IndexBuffer::new(
+            display,
+            glium::index::PrimitiveType::TrianglesList,
+            &indices,
+        ).unwrap();
+
+        let texture = glhelper::load_texture(
+            "assets/car1.png",
+            image::ImageFormat::PNG,
+            display
+        );
+
         Self {
-            vertex_buffer: VertexBuffer::empty(display, 0).unwrap(),
-            index_buffer: IndexBuffer::empty(
-                display,
-                glium::index::PrimitiveType::TrianglesList,
-                0
-            ).unwrap(),
+            vertex_buffers: vec![vertex_buffer],
+            index_buffers: vec![index_buffer],
+            textures: vec![texture],
             program: program,
         }
     }
 
-    pub fn render<T>(&self, target: &mut T, matrix: &na::Matrix4<f32>) 
+    pub fn render<T>(
+        &self, target: &mut T, 
+        car_system: &CarSystem, matrix: &na::Matrix4<f32>) 
         where T: Surface
     {
         use glium::draw_parameters::DrawParameters;
         let mut params: DrawParameters = Default::default();
 
+        let blend = glium::Blend {
+            color: glium::BlendingFunction::Addition {
+                source: glium::LinearBlendingFactor::SourceAlpha, 
+                destination: glium::LinearBlendingFactor::OneMinusSourceAlpha,
+            },
+            alpha: glium::BlendingFunction::Addition {
+                source: glium::LinearBlendingFactor::SourceAlpha, 
+                destination: glium::LinearBlendingFactor::OneMinusSourceAlpha,
+            },
+            constant_value: (0.0, 0.0, 0.0, 0.0),
+        };
+
+        params.blend = blend;
+
         let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
 
         let uniform = uniform! {
             matrix: *matrix_ref,
+            tex: &self.textures[0],
         };
+
         target.draw(
-            &self.vertex_buffer,
-            &self.index_buffer,
+            &self.vertex_buffers[0],
+            &self.index_buffers[0],
             &self.program,
             &uniform, 
             &params).unwrap();

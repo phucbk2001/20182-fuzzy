@@ -6,6 +6,7 @@ use crate::road_renderer::RoadRenderer;
 use crate::road::{Road, Backbone};
 
 use crate::car::{CarSystem, Car};
+use crate::car_renderer::CarRenderer;
 
 use crate::action::{Action, CameraAction};
 
@@ -21,6 +22,7 @@ pub struct Context<'a> {
     pub road: Road,
     pub road_renderer: RoadRenderer,
     pub car_system: CarSystem,
+    pub car_renderer: CarRenderer,
 }
 
 fn on_scroll(v: f32, actions: &mut Vec<Action>) {
@@ -92,6 +94,8 @@ impl<'a> Context<'a> {
 
         car_system.add(car);
 
+        let car_renderer = CarRenderer::new(&display, &config);
+
         Self {
             display: display,
             window_system: window_system,
@@ -100,6 +104,7 @@ impl<'a> Context<'a> {
             road: road,
             road_renderer: road_renderer,
             car_system: car_system,
+            car_renderer: car_renderer,
         }
     }
 
@@ -120,5 +125,8 @@ impl<'a> Context<'a> {
 
         self.road_renderer.render(
             target, self.camera.get_matrix());
+
+        self.car_renderer.render(
+            target, &self.car_system, self.camera.get_matrix());
     }
 }

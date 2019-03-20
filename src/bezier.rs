@@ -194,52 +194,80 @@ pub fn turn_right_90_degree(v: Point) -> Point {
     }
 }
 
-#[allow(dead_code)]
-fn assert_point_eq(a: Point, b: Point) {
-    use approx::assert_relative_eq;
-    assert_relative_eq!(a.x, b.x);
-    assert_relative_eq!(a.y, b.y);
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[allow(dead_code)]
+    fn assert_point_eq(a: Point, b: Point) {
+        use approx::assert_relative_eq;
+        assert_relative_eq!(a.x, b.x);
+        assert_relative_eq!(a.y, b.y);
+    }
+
+    #[test]
+    fn bezier_pos_middle() {
+        let a = Point { x: 1.0, y: 2.0 };
+        let b = Point { x: 2.0, y: 4.0 };
+        let c = Point { x: 3.0, y: 6.0 };
+        let curve = Bezier { a: a, b: b, c: c};
+        let m = curve.pos(0.5);
+        assert_point_eq(m, Point::new(2.0, 4.0));
+    }
+
+    #[test]
+    fn determinant() {
+        use approx::assert_relative_eq;
+        let r = det([
+            [1.0, 2.0],
+            [3.0, 4.0],
+        ]);
+        assert_relative_eq!(r, -2.0);
+    }
+
+    #[test]
+    fn two_lines_intersect() {
+        let p1 = Point::new(0.0, 0.0);
+        let p2 = Point::new(3.0, 0.0);
+        let v1 = Point::new(1.0, 1.0);
+        let v2 = Point::new(-1.0, 2.0);
+        let p = intersect_lines(
+            Line { position: p1, direction: v1 }, 
+            Line { position: p2, direction: v2 });
+        assert_point_eq(p, Point::new(2.0, 2.0));
+    }
+
+    #[test]
+    fn test_turn_90_degree() {
+        let v = Point::new(2.0, 1.0);
+
+        let r = turn_left_90_degree(v);
+        assert_point_eq(r, Point::new(-1.0, 2.0));
+
+        let r = turn_right_90_degree(v);
+        assert_point_eq(r, Point::new(1.0, -2.0));
+    }
+
 }
 
-#[test]
-fn bezier_pos_middle() {
-    let a = Point { x: 1.0, y: 2.0 };
-    let b = Point { x: 2.0, y: 4.0 };
-    let c = Point { x: 3.0, y: 6.0 };
-    let curve = Bezier { a: a, b: b, c: c};
-    let m = curve.pos(0.5);
-    assert_point_eq(m, Point::new(2.0, 4.0));
+type Matrix = [[f32; 2]; 2];
+
+fn rotation_matrix_from(direction: Point) -> Matrix {
+    [
+        [1.0, 0.0],
+        [0.0, 1.0],
+    ]
 }
 
-#[test]
-fn determinant() {
-    use approx::assert_relative_eq;
-    let r = det([
-        [1.0, 2.0],
-        [3.0, 4.0],
-    ]);
-    assert_relative_eq!(r, -2.0);
+impl Mul<Point> for Matrix {
+    type Output = Point;
+
+    fn mul(self, p: Point) -> Point {
+        Point {
+            x: self[0][0] * p.x + self[0][1] * p.y,
+            y: self[1][0] * p.x + self[1][1] * p.y,
+        }
+    }
 }
 
-#[test]
-fn two_lines_intersect() {
-    let p1 = Point::new(0.0, 0.0);
-    let p2 = Point::new(3.0, 0.0);
-    let v1 = Point::new(1.0, 1.0);
-    let v2 = Point::new(-1.0, 2.0);
-    let p = intersect_lines(
-        Line { position: p1, direction: v1 }, 
-        Line { position: p2, direction: v2 });
-    assert_point_eq(p, Point::new(2.0, 2.0));
-}
-
-#[test]
-fn test_turn_90_degree() {
-    let v = Point::new(2.0, 1.0);
-
-    let r = turn_left_90_degree(v);
-    assert_point_eq(r, Point::new(-1.0, 2.0));
-
-    let r = turn_right_90_degree(v);
-    assert_point_eq(r, Point::new(1.0, -2.0));
-}
