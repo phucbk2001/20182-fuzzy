@@ -11,6 +11,7 @@ mod car_renderer;
 mod window;
 mod action;
 mod reducer;
+mod ecs;
 
 use std::time::Instant;
 

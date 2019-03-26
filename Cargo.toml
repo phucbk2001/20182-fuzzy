@@ -9,4 +9,3 @@ approx = "*"
 image = "*"
 glium = "*"
 nalgebra = "*"
-ecs = { path = "../ecs" }
