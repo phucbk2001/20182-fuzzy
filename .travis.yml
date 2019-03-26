@@ -1,0 +1,14 @@
+dist: xenial
+sudo: false
+language: rust
+
+rust: 
+    - stable
+    - beta
+    - nightly
+
+cache: cargo
+
+script:
+    - cargo build
+    - cargo test
