@@ -1,5 +1,6 @@
 use nalgebra as na;
 
+use crate::bezier;
 use crate::config::Config;
 use crate::glhelper;
 use crate::car::CarSystem;
@@ -70,10 +71,10 @@ impl CarRenderer {
         let length = config.car_length;
 
         let vertices = vec![
-            Vertex { position: [width/2.0, -length/2.0], tex_coords: [1.0, 1.0] },
-            Vertex { position: [width/2.0, length/2.0], tex_coords: [0.0, 1.0] },
-            Vertex { position: [-width/2.0, length/2.0], tex_coords: [0.0, 0.0] },
-            Vertex { position: [-width/2.0, -length/2.0], tex_coords: [1.0, 0.0] },
+            Vertex { position: [length/2.0, width/2.0], tex_coords: [0.0, 0.0] },
+            Vertex { position: [-length/2.0, width/2.0], tex_coords: [1.0, 0.0] },
+            Vertex { position: [-length/2.0, -width/2.0], tex_coords: [1.0, 1.0] },
+            Vertex { position: [length/2.0, -width/2.0], tex_coords: [0.0, 1.0] },
         ];
 
         let vertex_buffer = VertexBuffer::new(
@@ -104,8 +105,8 @@ impl CarRenderer {
     }
 
     pub fn render<T>(
-        &self, target: &mut T, 
-        car_system: &CarSystem, matrix: &na::Matrix4<f32>) 
+        &self, target: &mut T, car_system: &CarSystem,
+        view_proj: &na::Matrix4<f32>) 
         where T: Surface
     {
         use glium::draw_parameters::DrawParameters;
@@ -125,6 +126,10 @@ impl CarRenderer {
 
         params.blend = blend;
 
+        let world = bezier::Matrix::rotation_from(
+            bezier::Point { x: 1.0, y: 1.0 }).to_na_matrix()
+            .append_translation(&na::Vector3::new(30.0, 20.0, 0.0));
+        let matrix = *view_proj * world;
         let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
 
         let uniform = uniform! {

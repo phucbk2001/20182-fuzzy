@@ -129,8 +129,8 @@ fn point_id_to_three_points(
     let middle_pos = Point::from(p.position);
 
     let direction = Point::from(p.direction);
-    let left_dir = bezier::turn_left_90_degree(direction);
-    let right_dir = bezier::turn_right_90_degree(direction);
+    let left_dir = direction.turn_left_90_degree();
+    let right_dir = direction.turn_right_90_degree();
     let ratio = config.lane_width / direction.len();
 
     let left_pos = middle_pos + ratio * left_dir;
