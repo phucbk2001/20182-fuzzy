@@ -1,4 +1,7 @@
+pub mod renderer;
+
 use crate::bezier;
+use crate::ecs;
 use bezier::{Point};
 
 use crate::road;
@@ -7,6 +10,9 @@ use road::{Road, LocationId};
 use std::time::{Instant};
 
 const DESTINATION_EFFECTIVE_RANGE: f32 = 3.0;
+
+#[derive(Copy, Clone)]
+pub struct ForCar {}
 
 #[derive(Copy, Clone)]
 pub enum CarType {
@@ -23,14 +29,32 @@ pub struct Car {
     pub destination: Point,
 }
 
+impl Default for Car {
+    fn default() -> Car {
+        Car {
+            position: Point { x: 0.0, y: 0.0 },
+            direction: Point { x: 1.0, y: 0.0 },
+            velocity: 5.0,
+            car_type: CarType::Fast,
+            destination: Point { x: 100.0, y: 100.0 },
+        }
+    }
+}
+
 impl Car {
-    pub fn from_path(road: &Road, path: &[LocationId]) -> Self {
-        let start = path[0];
-        let end = *path.iter().last().unwrap();
+    fn calculate_start_and_destination(road: &Road, path: &[LocationId]) 
+        -> (Point, Point, Point) 
+    {
+        let a = path[0];
+        let b = path[1];
         let start_lane = road.lanes.iter().find(
-            |lane| lane.from == start).unwrap();
+            |lane| lane.from == a && lane.to == b).unwrap();
+
+        let len = path.len();
+        let a = path[len - 2];
+        let b = path[len - 1];
         let end_lane = road.lanes.iter().find(
-            |lane| lane.to == end).unwrap();
+            |lane| lane.from == a && lane.to == b).unwrap();
 
         let bezier1 = road.get_bezier(start_lane.left[0]);
         let bezier2 = road.get_bezier(start_lane.right[0]);
@@ -45,31 +69,39 @@ impl Car {
         let destination = (p3 + p4) * 0.5;
         let direction = bezier1.direction(0.0);
 
+        (position, destination, direction)
+    }
+
+    pub fn from_path(road: &Road, path: &[LocationId]) -> Self {
+        let (pos, dest, dir) = Car::calculate_start_and_destination(road, path);
+
         Self {
-            position: position,
-            direction: direction,
+            position: pos,
+            direction: dir,
             velocity: 10.0,
             car_type: CarType::Fast,
-            destination: destination,
+            destination: dest,
         }
     }
 }
 
 pub struct CarSystem {
     prev_instant: Instant,
-    cars: Vec<Car>,
+    pub em: ecs::EntityManager<ForCar>,
+    pub cars: ecs::Components<Car, ForCar>,
 }
 
 impl CarSystem {
     pub fn new() -> Self {
         Self {
             prev_instant: Instant::now(),
-            cars: vec![],
+            em: ecs::EntityManager::new(),
+            cars: ecs::Components::new(),
         }
     }
 
     pub fn add(&mut self, car: Car) {
-        self.cars.push(car);
+        self.cars.add(&mut self.em, car);
     }
 
     pub fn update(&mut self) {
@@ -77,12 +109,12 @@ impl CarSystem {
         let delta = current.duration_since(self.prev_instant);
         let d: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
 
-        for car in self.cars.iter_mut() {
-            let pos = car.position;
-            let v = car.direction * car.velocity;
-            car.position = pos + v * d;
-
-            // println!("Car: {} {}", car.position.x, car.position.y);
+        for (e, car) in self.cars.iter_mut() {
+            if self.em.is_alive(*e) { 
+                let pos = car.position;
+                let v = car.direction * car.velocity;
+                car.position = pos + v * d;
+            }
         }
 
         self.prev_instant = current;

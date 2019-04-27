@@ -158,6 +158,17 @@ impl Matrix {
         }
     }
 
+    pub fn inv_rotation_from(u: Point) -> Matrix {
+        let u = u.normalize();
+        let v = u.turn_left_90_degree();
+        Matrix {
+            a: u.x,
+            b: u.y,
+            c: v.x,
+            d: v.y,
+        }
+    }
+
     pub fn transpose(self) -> Matrix {
         let Matrix { a, b, c, d } = self;
         Matrix {
@@ -262,6 +273,77 @@ pub fn intersect_lines(
         let du = m1.det();
         let u = du / d;
         p1 + u * v1
+    }
+}
+
+fn on_bezier(t: f32) -> bool {
+    t >= -0.00001 && t <= 1.00001
+}
+
+pub fn intersect_line_bezier(
+    line: Line, bezier: Bezier) -> Option<Point>
+{
+    let v = line.direction;
+    let p = line.position;
+    let m = Matrix::inv_rotation_from(v);
+
+    let new_bezier = Bezier {
+        a: m * (bezier.a - p),
+        b: m * (bezier.b - p),
+        c: m * (bezier.c - p),
+    };
+
+    let a = new_bezier.a.y + new_bezier.c.y - 2.0 * new_bezier.b.y;
+    let b = 2.0 * new_bezier.b.y - 2.0 * new_bezier.a.y;
+    let c = new_bezier.a.y;
+    
+    if a == 0.0 {
+        if b == 0.0 {
+            if c == 0.0 {
+                Some(bezier.pos(0.5))
+            }
+            else {
+                None
+            }
+        }
+        else {
+            let x = -c / b;
+            if on_bezier(x) {
+                Some(bezier.pos(x))
+            }
+            else {
+                None
+            }
+        }
+    }
+    else {
+        let delta = b * b - 4.0 * a * c;
+        if delta < 0.0 {
+            None
+        }
+        else if delta == 0.0 {
+            let x = -b / (2.0 * a);
+            if on_bezier(x) {
+                Some(bezier.pos(x))
+            }
+            else {
+                None
+            }
+        }
+        else {
+            let d = f32::sqrt(delta);
+            let x1 = (-b - d) / (2.0 * a);
+            let x2 = (-b + d) / (2.0 * a);
+            if on_bezier(x1) {
+                Some(bezier.pos(x1))
+            }
+            else if on_bezier(x2) {
+                Some(bezier.pos(x2))
+            }
+            else {
+                None
+            }
+        }
     }
 }
 
@@ -432,5 +514,36 @@ mod tests {
         let p = m * Point { x: 3.0, y: 3.0 };
         assert_relative_eq!(p.x, 0.0);
         assert_relative_eq!(p.y, 3.0 * f32::sqrt(2.0));
+    }
+
+    #[test]
+    fn test_matrix_inv_from_direction() {
+        let v = Point { x: 1.0, y: 2.0 };
+        let m1 = Matrix::inv_rotation_from(v);
+        let m2 = Matrix::rotation_from(v);
+        mat_is_id(m1 * m2);
+
+        let p = m1 * v;
+        assert_relative_eq!(p.y, 0.0);
+        assert_relative_eq!(p.x, f32::sqrt(5.0));
+    }
+
+    #[test]
+    fn test_line_intersect_bezier_1() {
+        let line = Line {
+            direction: Point { x: 1.0, y: 0.0 },
+            position: Point { x: 0.0, y: 1.0 },
+        };
+        let a = Point { x: 2.0, y: 6.0 };
+        let b = Point { x: 2.0, y: 0.0 };
+        let c = Point { x: 2.0, y: -2.0 };
+        let bezier = Bezier { a: a, b: b, c: c };
+        if let Some(p) = intersect_line_bezier(line, bezier) {
+            assert_relative_eq!(p.y, 1.0);
+            assert_relative_eq!(p.x, 2.0);
+        }
+        else {
+            assert!(false);
+        }
     }
 }

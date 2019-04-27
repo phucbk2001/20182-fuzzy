@@ -1,12 +1,12 @@
 use crate::config::Config;
-use crate::window::{WindowSystem, DragEvent, root_id};
+use crate::window::{WindowSystem, DragEvent};
 use crate::camera::Camera;
-use crate::road_renderer::RoadRenderer;
 
 use crate::road::{Road, Backbone};
+use crate::road::renderer::RoadRenderer;
 
 use crate::car::{CarSystem, Car};
-use crate::car_renderer::CarRenderer;
+use crate::car::renderer::CarRenderer;
 
 use crate::action::{Action, CameraAction};
 
@@ -46,7 +46,7 @@ impl<'a> Context<'a> {
             (config.camera_width, config.camera_width)
         );
         window_system.set_on_scroll(Box::new(on_scroll));
-        let window = root_id();
+        let window = window_system.root_window;
         window_system.set_on_drag(window, Box::new(camera_on_drag));
 
         let mut backbone = Backbone::new();
@@ -90,7 +90,7 @@ impl<'a> Context<'a> {
             vec![location_a, location_b, location_c];
 
         let mut car_system = CarSystem::new();
-        let car = Car::from_path(&road, &[location_a, location_b]);
+        let car = Car::from_path(&road, &[location_b, location_c]);
 
         car_system.add(car);
 

@@ -126,22 +126,28 @@ impl CarRenderer {
 
         params.blend = blend;
 
-        let world = bezier::Matrix::rotation_from(
-            bezier::Point { x: 1.0, y: 1.0 }).to_na_matrix()
-            .append_translation(&na::Vector3::new(30.0, 20.0, 0.0));
-        let matrix = *view_proj * world;
-        let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
+        for (e, car) in car_system.cars.iter() {
+            if car_system.em.is_alive(*e) {
+                let world = bezier::Matrix::rotation_from(
+                    car.direction).to_na_matrix()
+                    .append_translation(&na::Vector3::new(
+                        car.position.x, car.position.y, 0.0));
+                let matrix = *view_proj * world;
+                let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
 
-        let uniform = uniform! {
-            matrix: *matrix_ref,
-            tex: &self.textures[0],
-        };
+                let uniform = uniform! {
+                    matrix: *matrix_ref,
+                    tex: &self.textures[0],
+                };
 
-        target.draw(
-            &self.vertex_buffers[0],
-            &self.index_buffers[0],
-            &self.program,
-            &uniform, 
-            &params).unwrap();
+                target.draw(
+                    &self.vertex_buffers[0],
+                    &self.index_buffers[0],
+                    &self.program,
+                    &uniform, 
+                    &params).unwrap();
+            }
+        }
+
     }
 }

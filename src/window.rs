@@ -1,9 +1,13 @@
 use glium::glutin;
 use crate::context::Context;
 use crate::action::Action;
+use crate::ecs;
 
 const MAX_WINDOW_COUNT: usize = 128;
 const CLICK_RANGE: f64 = 10.0;
+
+#[derive(Copy, Clone)]
+pub struct ForWindow {}
 
 #[derive(Copy, Clone)]
 pub struct Window {
@@ -13,15 +17,18 @@ pub struct Window {
     h: f64,
 }
 
-#[derive(Copy, Clone)]
-pub struct WindowId {
-    id: usize,
-    generation: usize,
+impl Default for Window {
+    fn default() -> Window {
+        Window {
+            x: 0.0, 
+            y: 0.0, 
+            w: 0.0, 
+            h: 0.0, 
+        }
+    }
 }
 
-pub fn root_id() -> WindowId {
-    WindowId { id: 0, generation: 1 }
-}
+type WindowId = ecs::Entity<ForWindow>;
 
 #[derive(Copy, Clone)]
 pub enum MouseButton {
@@ -69,65 +76,39 @@ pub struct MouseManager {
 }
 
 pub struct WindowSystem {
-    free_list: Vec<Option<usize>>,
-    generations: Vec<usize>,
-    windows: Vec<Option<Window>>,
+    em: ecs::EntityManager<ForWindow>,
+    windows: ecs::Components<Window, ForWindow>,
+    pub root_window: WindowId,
 
     mouse: MouseManager,
-    on_clicks: Vec<Option<OnClick>>,
-    on_drags: Vec<Option<OnDrag>>,
-}
-
-fn new_free_list() -> Vec<Option<usize>> {
-    let mut v: Vec<Option<usize>> = 
-        (0..(MAX_WINDOW_COUNT - 1))
-        .map(|i| Some(i + 1)).collect();
-    v.push(None);
-    v
-}
-
-fn new_generations() -> Vec<usize> {
-    (0..MAX_WINDOW_COUNT).map(|_| 0).collect()
+    on_clicks: ecs::Components<Option<OnClick>, ForWindow>,
+    on_drags: ecs::Components<Option<OnDrag>, ForWindow>,
 }
 
 fn default_on_scroll(_: f32, _: &mut Vec<Action>) {}
 
-fn resize_with_default<T: Default>(
-    v: &mut Vec<T>, len: usize) 
-{
-    for _ in 0..len {
-        v.push(Default::default());
-    }
-}
-
 impl WindowSystem {
     pub fn new() -> Self {
-        let free_list = new_free_list();
-        let mut generations = new_generations();
-        generations[0] = 1;
-
-        let mut windows: Vec<Option<Window>> = Vec::new();
-        let mut on_clicks: Vec<Option<OnClick>> = Vec::new();
-        let mut on_drags: Vec<Option<OnDrag>> = Vec::new();
-
-        resize_with_default(&mut windows, MAX_WINDOW_COUNT);
-        resize_with_default(&mut on_clicks, MAX_WINDOW_COUNT);
-        resize_with_default(&mut on_drags, MAX_WINDOW_COUNT);
-        
         let mouse = MouseManager::new();
+        let em = ecs::EntityManager::<ForWindow>::new();
 
-        Self {
-            free_list: free_list,
-            generations: generations,
-            windows: windows,
+        let mut this = Self {
+            em: em,
+            root_window: WindowId::new(0, 0),
+            windows: ecs::Components::<Window, ForWindow>::new(),
             mouse: mouse,
-            on_clicks: on_clicks,
-            on_drags: on_drags,
-        }
+            on_clicks: ecs::Components::<Option<OnClick>, ForWindow>::new(),
+            on_drags: ecs::Components::<Option<OnDrag>, ForWindow>::new(),
+        };
+        this.root_window = this.new_window();
+        this
     }
 
-    pub fn new_window() -> WindowId {
-        WindowId { id: 0, generation: 0 }
+    pub fn new_window(&mut self) -> WindowId {
+        let window = self.em.allocate();
+        self.on_clicks.set(window, None);
+        self.on_drags.set(window, None);
+        window
     }
 
     pub fn set_on_scroll(&mut self, on_scroll: OnScroll) {
@@ -135,15 +116,35 @@ impl WindowSystem {
     }
 
     pub fn set_on_drag(&mut self, window: WindowId, on_drag: OnDrag) {
-        self.on_drags[window.id] = Some(on_drag);
+        self.on_drags.set(window, Some(on_drag));
     }
 
-    fn get_drag_callback(&self, window: WindowId) -> &Option<OnDrag> {
-        &self.on_drags[window.id]
+    fn get_drag_callback(&self, window: WindowId) -> Option<&OnDrag> {
+        if self.em.is_alive(window) {
+            if let Some(func) = self.on_drags.get(window) {
+                Some(&func)
+            }
+            else {
+                None
+            }
+        }
+        else {
+            None
+        }
     }
 
-    fn get_click_callback(&self, window: WindowId) -> &Option<OnClick> {
-        &self.on_clicks[window.id]
+    fn get_click_callback(&self, window: WindowId) -> Option<&OnClick> {
+        if self.em.is_alive(window) {
+            if let Some(func) = self.on_clicks.get(window) {
+                Some(&func)
+            }
+            else {
+                None
+            }
+        }
+        else {
+            None
+        }
     }
 }
 
@@ -196,7 +197,7 @@ impl WindowSystem {
         };
 
         let new_pos = self.mouse.pos;
-        let window = root_id();
+        let window = self.root_window;
 
         let mut call_drag = |old_pos| {
             if let Some(callback) = self.get_drag_callback(window) {
@@ -283,7 +284,7 @@ impl WindowSystem {
             Pressing,
         };
 
-        let window = root_id();
+        let window = self.root_window;
         
         self.mouse.left_state = match state {
             Pressed => Pressing(self.mouse.pos),
@@ -324,7 +325,7 @@ impl WindowSystem {
             Released => match self.mouse.right_state {
                 None => None,
                 Some(_) => {
-                    self.click(root_id(), MouseButton::Right, actions);
+                    self.click(self.root_window, MouseButton::Right, actions);
                     None
                 },
             },
@@ -346,7 +347,7 @@ impl WindowSystem {
             Released => match self.mouse.middle_state {
                 None => None,
                 Some(_) => {
-                    self.click(root_id(), MouseButton::Middle, actions);
+                    self.click(self.root_window, MouseButton::Middle, actions);
                     None
                 },
             },
