@@ -1,8 +1,10 @@
 pub mod renderer;
+pub mod fuzzy;
 
 use crate::bezier;
 use crate::ecs;
 use crate::config::Config;
+use fuzzy::CarFuzzy;
 
 use bezier::{Point};
 
@@ -149,7 +151,7 @@ impl Car {
         Self {
             position: pos,
             direction: dir,
-            velocity: 2.0,
+            velocity: 5.0,
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
             car_type: CarType::Fast,
@@ -164,6 +166,7 @@ pub struct CarSystem {
     prev_instant: Instant,
     pub em: ecs::EntityManager<ForCar>,
     pub cars: ecs::Components<Car, ForCar>,
+    fuzzy: CarFuzzy,
 }
 
 impl CarSystem {
@@ -172,6 +175,7 @@ impl CarSystem {
             prev_instant: Instant::now(),
             em: ecs::EntityManager::new(),
             cars: ecs::Components::new(),
+            fuzzy: CarFuzzy::new(),
         }
     }
 
@@ -209,7 +213,24 @@ impl CarSystem {
                 };
                 let (left, right) = car.path_properties
                     .nearest_intersection(line);
-                println!("Intersect: {} {}", (left - pos).len(), (right - pos).len());
+                let dx = (left - pos).len() - config.car_width / 2.0;
+                let dy = (right - pos).len() - config.car_width / 2.0;
+
+                self.fuzzy.fuzzy.set_input(self.fuzzy.deviation.input, dx / (dx + dy));
+                self.fuzzy.fuzzy.evaluate(self.fuzzy.simple_rule_set);
+                let output = self.fuzzy.fuzzy.get_output(self.fuzzy.steering.output);
+                let output = (output - 0.5) / 0.5;
+
+                let angle = f32::abs(output) * std::f32::consts::PI / 6.0;
+                let is_turning_left = 
+                    if output < 0.0 {
+                        true
+                    }
+                    else {
+                        false
+                    };
+                car.angle = angle;
+                car.is_turning_left = is_turning_left;
             }
         }
 

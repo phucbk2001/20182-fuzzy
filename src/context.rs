@@ -92,7 +92,7 @@ impl<'a> Context<'a> {
             vec![location_a, location_b, location_c];
 
         let mut car_system = CarSystem::new();
-        let car = Car::from_path(&road, &[location_a, location_b]);
+        let car = Car::from_path(&road, &[location_a, location_b, location_c]);
 
         car_system.add(car);
 
