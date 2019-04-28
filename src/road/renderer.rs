@@ -21,12 +21,6 @@ pub struct Vertex {
 
 implement_vertex!(Vertex, position);
 
-pub fn pos(x: f32, y: f32) -> Vertex {
-    Vertex {
-        position: [x, y],
-    }
-}
-
 struct ChosenLaneCrossSection {
     lanes: Vec<(LocationId, LocationId)>,
     cross_sections: Vec<(LocationId, LocationId, LocationId)>,

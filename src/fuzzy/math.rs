@@ -110,7 +110,7 @@ impl Fuzzy {
                 .cached_output_sets.push(output_set);
         }
 
-        let mut output_results: Vec<(OutputId, f32)> =
+        let output_results: Vec<(OutputId, f32)> =
             self.outputs.iter().enumerate()
                 .filter(|(_index, output)| !output.cached_output_sets.is_empty())
                 .map(|(id, output)| (OutputId { id }, self.defuzzificate(output)))

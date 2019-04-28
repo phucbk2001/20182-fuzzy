@@ -3,13 +3,16 @@ use crate::context::Context;
 use crate::action::Action;
 use crate::ecs;
 
+#[allow(dead_code)]
 const MAX_WINDOW_COUNT: usize = 128;
+
 const CLICK_RANGE: f64 = 10.0;
 
 #[derive(Copy, Clone)]
 pub struct ForWindow {}
 
 #[derive(Copy, Clone)]
+#[allow(dead_code)]
 pub struct Window {
     x: f64,
     y: f64,
@@ -77,6 +80,7 @@ pub struct MouseManager {
 
 pub struct WindowSystem {
     em: ecs::EntityManager<ForWindow>,
+    #[allow(dead_code)]
     windows: ecs::Components<Window, ForWindow>,
     pub root_window: WindowId,
 

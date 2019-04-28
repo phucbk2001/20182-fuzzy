@@ -95,8 +95,8 @@ impl PathProperties {
         let lanes = path_to_lanes(path);
         let cross_sections = path_to_cross_sections(path);
 
-        let mut lane_it = lanes.iter();
-        let mut cs_it = cross_sections.iter();
+        let lane_it = lanes.iter();
+        let cs_it = cross_sections.iter();
 
         let mut left_beziers = Vec::new();
         let mut right_beziers = Vec::new();
@@ -138,9 +138,9 @@ impl PathProperties {
     }
 
     pub fn nearest_intersection(&self, line: Line) -> (Point, Point) {
-        let mut candidate_left_it = self.left_beziers.iter()
+        let candidate_left_it = self.left_beziers.iter()
             .filter(|&bezier| !too_far(line, bezier));
-        let mut candidate_right_it = self.right_beziers.iter()
+        let candidate_right_it = self.right_beziers.iter()
             .filter(|&bezier| !too_far(line, bezier));
 
         let mut nearest_left = None;

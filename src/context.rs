@@ -2,8 +2,6 @@ use crate::config::Config;
 use crate::window::{WindowSystem, DragEvent};
 use crate::camera::Camera;
 
-use crate::road;
-use crate::bezier;
 use crate::road::{Road, Backbone};
 use crate::road::renderer::RoadRenderer;
 

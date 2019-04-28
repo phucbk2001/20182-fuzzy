@@ -13,6 +13,7 @@ use road::{Road, LocationId};
 
 use std::time::{Instant};
 
+#[allow(dead_code)]
 const DESTINATION_EFFECTIVE_RANGE: f32 = 3.0;
 
 #[derive(Copy, Clone)]
@@ -20,6 +21,7 @@ pub struct ForCar {}
 
 #[derive(Copy, Clone)]
 pub enum CarType {
+    #[allow(dead_code)]
     Slow, 
     Fast,
 }
@@ -112,9 +114,9 @@ fn move_car(input: MoveInput) -> MoveOutput {
     let ex = ey.turn_right_90_degree();
 
     let mut dx: f32;
-    let mut dy: f32;
+    let dy: f32;
     let mut vx: f32;
-    let mut vy: f32;
+    let vy: f32;
 
     if radius < 100.0 {
         let phi = vdt / radius;

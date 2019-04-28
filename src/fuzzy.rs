@@ -21,7 +21,9 @@ pub struct RuleId { id: usize }
 pub struct RuleSetId { id: usize }
 
 pub struct Input {
+    #[allow(dead_code)]
     min: f32,
+    #[allow(dead_code)]
     max: f32,
     value: f32,
 }
@@ -213,5 +215,4 @@ impl Fuzzy {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 }
