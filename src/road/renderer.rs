@@ -247,8 +247,8 @@ impl RoadRenderer {
             ).unwrap(),
 
             program: program,
-            road_color: [115.0/255.0, 116.0/255.0, 110.0/255.0],
-            border_color: [0.0, 0.5, 0.0],
+            road_color: [40.0/255.0, 40.0/255.0, 40.0/255.0],
+            border_color: [0.0, 1.0, 1.0],
             chosen_color: [1.0, 0.0, 0.0],
         }
     }

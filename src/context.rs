@@ -111,7 +111,7 @@ impl<'a> Context<'a> {
     }
 
     pub fn update(&mut self, display: &Display) {
-        self.car_system.update();
+        self.car_system.update(&self.config);
         self.road_renderer.update(display, &self.road);
     }
 

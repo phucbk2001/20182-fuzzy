@@ -2,6 +2,8 @@ pub mod renderer;
 
 use crate::bezier;
 use crate::ecs;
+use crate::config::Config;
+
 use bezier::{Point};
 
 use crate::road;
@@ -25,6 +27,9 @@ pub struct Car {
     pub position: Point,
     pub direction: Point,
     pub velocity: f32,
+    pub angle: f32,
+    pub is_turning_left: bool,
+
     pub car_type: CarType,
     pub destination: Point,
 
@@ -36,7 +41,9 @@ impl Default for Car {
         Car {
             position: Point { x: 0.0, y: 0.0 },
             direction: Point { x: 1.0, y: 0.0 },
-            velocity: 5.0,
+            velocity: 2.0,
+            angle: std::f32::consts::PI / 36.0,
+            is_turning_left: false,
             car_type: CarType::Fast,
             destination: Point { x: 100.0, y: 100.0 },
 
@@ -75,6 +82,66 @@ fn calculate_start_and_destination(road: &Road, path: &[LocationId])
     (position, destination, direction)
 }
 
+#[derive(Copy, Clone)]
+struct MoveInput {
+    front_wheel: f32,
+    rear_wheel: f32,
+    width: f32,
+    position: Point,
+    direction: Point,
+    velocity: f32,
+    angle: f32,
+    dt: f32,
+    is_turning_left: bool,
+}
+
+#[derive(Copy, Clone)]
+struct MoveOutput {
+    position: Point,
+    direction: Point,
+}
+
+fn move_car(input: MoveInput) -> MoveOutput {
+    let wb = input.front_wheel + input.rear_wheel;
+    let radius = wb / f32::tan(input.angle) + input.width / 2.0;
+    let vdt = input.velocity * input.dt;
+
+    let ey = input.direction;
+    let ex = ey.turn_right_90_degree();
+
+    let mut dx: f32;
+    let mut dy: f32;
+    let mut vx: f32;
+    let mut vy: f32;
+
+    if radius < 100.0 {
+        let phi = vdt / radius;
+        dx = radius * (1.0 - f32::cos(phi));
+        dy = radius * f32::sin(phi);
+        vx = radius * f32::sin(phi);
+        vy = radius * f32::cos(phi);
+    }
+    else {
+        dx = (vdt * vdt) / (2.0 * radius);
+        dy = vdt;
+        vx = vdt;
+        vy = radius - (vdt * vdt) / (2.0 * radius);
+    }
+
+    if input.is_turning_left {
+        dx = -dx;
+        vx = -vx;
+    }
+
+    let middle_rear_wheel = input.position - ey * input.rear_wheel;
+
+    let middle_rear_wheel = middle_rear_wheel + dx * ex + dy * ey;
+    let direction = (vx * ex + vy * ey).normalize();
+    let position = middle_rear_wheel + ey * input.rear_wheel;
+
+    MoveOutput { position, direction }
+}
+
 impl Car {
     pub fn from_path(road: &Road, path: &[LocationId]) -> Self {
         let (pos, dest, dir) = calculate_start_and_destination(road, path);
@@ -82,7 +149,9 @@ impl Car {
         Self {
             position: pos,
             direction: dir,
-            velocity: 10.0,
+            velocity: 2.0,
+            angle: std::f32::consts::PI / 36.0,
+            is_turning_left: false,
             car_type: CarType::Fast,
             destination: dest,
 
@@ -110,24 +179,37 @@ impl CarSystem {
         self.cars.add(&mut self.em, car);
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, config: &Config) {
         let current = Instant::now();
         let delta = current.duration_since(self.prev_instant);
-        let d: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
+        let dt: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
 
         for (e, car) in self.cars.iter_mut() {
             if self.em.is_alive(*e) { 
-                let pos = car.position;
-                let v = car.direction * car.velocity;
-                car.position = pos + v * d;
+                let input = MoveInput {
+                    front_wheel: config.front_wheel,
+                    rear_wheel: config.rear_wheel,
+                    width: config.car_width,
+                    position: car.position,
+                    direction: car.direction,
+                    velocity: car.velocity,
+                    angle: car.angle,
+                    dt,
+                    is_turning_left: car.is_turning_left,
+                };
 
+                let output = move_car(input);
+                car.position = output.position;
+                car.direction = output.direction;
+
+                let pos = car.position + car.direction * (config.car_width / 2.0);
                 let line = bezier::Line { 
-                    position: car.position, 
+                    position: pos,
                     direction: car.direction.turn_right_90_degree(),
                 };
                 let (left, right) = car.path_properties
                     .nearest_intersection(line);
-                // println!("Intersect: {:?} {:?}", left, right);
+                println!("Intersect: {} {}", (left - pos).len(), (right - pos).len());
             }
         }
 
