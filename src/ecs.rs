@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Entity<P> {
     index: usize, 
     generation: usize,
@@ -20,7 +20,7 @@ pub struct Components<T, P> {
     phantom: PhantomData<P>,
 }
 
-impl<P> Entity<P> where P: Copy + Clone {
+impl<P> Entity<P> where P: Copy {
     #[allow(dead_code)]
     pub fn new(index: usize, generation: usize) -> Self {
         Self {
@@ -44,7 +44,7 @@ impl<P> std::cmp::PartialEq for Entity<P> {
 
 const STARTING_GENERATION: usize = 1;
 
-impl<T> EntityManager<T> where T: Copy + Clone {
+impl<T> EntityManager<T> where T: Copy {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
@@ -86,7 +86,7 @@ impl<T> EntityManager<T> where T: Copy + Clone {
     }
 }
 
-impl<T, P> Components<T, P> where T: Default, P: Copy + Clone {
+impl<T, P> Components<T, P> where T: Default, P: Copy {
     #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
@@ -149,7 +149,7 @@ impl<T, P> Components<T, P> where T: Default, P: Copy + Clone {
 mod tests {
     use super::*;
 
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Clone, Copy, Debug)]
     struct TestComp {}
 
     #[test]

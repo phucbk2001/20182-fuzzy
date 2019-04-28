@@ -2,6 +2,8 @@ use crate::config::Config;
 use crate::window::{WindowSystem, DragEvent};
 use crate::camera::Camera;
 
+use crate::road;
+use crate::bezier;
 use crate::road::{Road, Backbone};
 use crate::road::renderer::RoadRenderer;
 
@@ -90,7 +92,7 @@ impl<'a> Context<'a> {
             vec![location_a, location_b, location_c];
 
         let mut car_system = CarSystem::new();
-        let car = Car::from_path(&road, &[location_b, location_c]);
+        let car = Car::from_path(&road, &[location_a, location_b]);
 
         car_system.add(car);
 

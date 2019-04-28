@@ -1,6 +1,7 @@
 use std::ops::{Add, Sub, Mul};
 use nalgebra as na;
 
+#[derive(Debug)]
 #[derive(Copy, Clone)]
 pub struct Point {
     pub x: f32,

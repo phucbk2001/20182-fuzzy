@@ -20,13 +20,15 @@ pub enum CarType {
     Fast,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Car {
     pub position: Point,
     pub direction: Point,
     pub velocity: f32,
     pub car_type: CarType,
     pub destination: Point,
+
+    pub path_properties: road::PathProperties,
 }
 
 impl Default for Car {
@@ -37,43 +39,45 @@ impl Default for Car {
             velocity: 5.0,
             car_type: CarType::Fast,
             destination: Point { x: 100.0, y: 100.0 },
+
+            path_properties: road::PathProperties::default(),
         }
     }
 }
 
+fn calculate_start_and_destination(road: &Road, path: &[LocationId]) 
+    -> (Point, Point, Point) 
+{
+    let a = path[0];
+    let b = path[1];
+    let start_lane = road.lanes.iter().find(
+        |lane| lane.from == a && lane.to == b).unwrap();
+
+    let len = path.len();
+    let a = path[len - 2];
+    let b = path[len - 1];
+    let end_lane = road.lanes.iter().find(
+        |lane| lane.from == a && lane.to == b).unwrap();
+
+    let bezier1 = road.get_bezier(start_lane.left[0]);
+    let bezier2 = road.get_bezier(start_lane.right[0]);
+    let p1 = bezier1.pos(0.0);
+    let p2 = bezier2.pos(0.0);
+    let position = (p1 + p2) * 0.5;
+
+    let b3 = *end_lane.left.iter().last().unwrap();
+    let b4 = *end_lane.right.iter().last().unwrap();
+    let p3 = road.get_bezier(b3).pos(1.0);
+    let p4 = road.get_bezier(b4).pos(1.0);
+    let destination = (p3 + p4) * 0.5;
+    let direction = bezier1.direction(0.0);
+
+    (position, destination, direction)
+}
+
 impl Car {
-    fn calculate_start_and_destination(road: &Road, path: &[LocationId]) 
-        -> (Point, Point, Point) 
-    {
-        let a = path[0];
-        let b = path[1];
-        let start_lane = road.lanes.iter().find(
-            |lane| lane.from == a && lane.to == b).unwrap();
-
-        let len = path.len();
-        let a = path[len - 2];
-        let b = path[len - 1];
-        let end_lane = road.lanes.iter().find(
-            |lane| lane.from == a && lane.to == b).unwrap();
-
-        let bezier1 = road.get_bezier(start_lane.left[0]);
-        let bezier2 = road.get_bezier(start_lane.right[0]);
-        let p1 = bezier1.pos(0.0);
-        let p2 = bezier2.pos(0.0);
-        let position = (p1 + p2) * 0.5;
-
-        let b3 = *end_lane.left.iter().last().unwrap();
-        let b4 = *end_lane.right.iter().last().unwrap();
-        let p3 = road.get_bezier(b3).pos(1.0);
-        let p4 = road.get_bezier(b4).pos(1.0);
-        let destination = (p3 + p4) * 0.5;
-        let direction = bezier1.direction(0.0);
-
-        (position, destination, direction)
-    }
-
     pub fn from_path(road: &Road, path: &[LocationId]) -> Self {
-        let (pos, dest, dir) = Car::calculate_start_and_destination(road, path);
+        let (pos, dest, dir) = calculate_start_and_destination(road, path);
 
         Self {
             position: pos,
@@ -81,6 +85,8 @@ impl Car {
             velocity: 10.0,
             car_type: CarType::Fast,
             destination: dest,
+
+            path_properties: road::PathProperties::new(road, path),
         }
     }
 }
@@ -114,6 +120,14 @@ impl CarSystem {
                 let pos = car.position;
                 let v = car.direction * car.velocity;
                 car.position = pos + v * d;
+
+                let line = bezier::Line { 
+                    position: car.position, 
+                    direction: car.direction.turn_right_90_degree(),
+                };
+                let (left, right) = car.path_properties
+                    .nearest_intersection(line);
+                // println!("Intersect: {:?} {:?}", left, right);
             }
         }
 

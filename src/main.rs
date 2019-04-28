@@ -1,3 +1,4 @@
+mod ecs;
 mod quad_eq;
 mod bezier;
 mod config;
@@ -9,7 +10,7 @@ mod car;
 mod window;
 mod action;
 mod reducer;
-mod ecs;
+mod fuzzy;
 
 use std::time::Instant;
 
