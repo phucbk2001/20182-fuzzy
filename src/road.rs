@@ -75,12 +75,12 @@ pub struct Location {
 pub struct Bezier {
     pub point1: PointId,
     pub point2: PointId,
-    pub middle: (f32, f32),
+    pub middle: Point,
 }
 
 #[derive(Copy, Clone)]
 pub struct DirectedBezier {
-    pub bezier_id: BezierId,
+    pub bezier: BezierId,
     pub is_forward: bool,
 }
 
@@ -101,7 +101,7 @@ pub struct CrossSection {
 
 pub struct Road {
     pub locations: Vec<Location>,
-    pub points: Vec<(f32, f32)>,
+    pub points: Vec<Point>,
     pub beziers: Vec<Bezier>,
     pub lanes: Vec<Lane>,
     pub cross_sections: Vec<CrossSection>,
@@ -116,8 +116,8 @@ pub struct Road {
 
 #[derive(Copy, Clone)]
 pub struct PointBackbone {
-    position: (f32, f32),
-    direction: (f32, f32),
+    position: Point,
+    direction: Point,
 }
 
 pub struct RoadBackbone {
@@ -201,32 +201,27 @@ fn update_lights(location: &mut Location, dt: f32, config: &Config) {
 }
 
 impl Road {
-    fn get_point(&self, point_id: PointId) -> bezier::Point {
-        let (x, y) = self.points[point_id.id];
-        bezier::Point { x: x, y: y }
+    fn get_point(&self, point_id: PointId) -> Point {
+        self.points[point_id.id]
     }
 
     pub fn get_bezier(&self, b: DirectedBezier) 
         -> bezier::Bezier 
     {
         let Bezier { point1, point2, middle } = 
-            self.beziers[b.bezier_id.id];
+            self.beziers[b.bezier.id];
 
-        let is_forward = b.is_forward;
-
-        let (xb, yb) = middle;
-
-        if is_forward {
+        if b.is_forward {
             bezier::Bezier {
                 a: self.get_point(point1),
-                b: bezier::Point { x: xb, y: yb },
+                b: middle,
                 c: self.get_point(point2),
             }
         }
         else {
             bezier::Bezier {
                 a: self.get_point(point2),
-                b: bezier::Point { x: xb, y: yb },
+                b: middle,
                 c: self.get_point(point1),
             }
         }

@@ -224,7 +224,7 @@ impl CarSystem {
                 let output = self.fuzzy.fuzzy.get_output(self.fuzzy.steering.output);
                 let output = (output - 0.5) / 0.5;
 
-                let angle = f32::abs(output) * std::f32::consts::PI / 6.0;
+                let angle = f32::abs(output) * std::f32::consts::PI / 2.1;
                 let is_turning_left = 
                     if output < 0.0 {
                         true

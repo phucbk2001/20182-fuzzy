@@ -1,4 +1,5 @@
 use super::*;
+use crate::bezier::Point;
 
 #[derive(Copy, Clone)]
 struct ThreePoints {
@@ -65,19 +66,19 @@ fn point_id_to_three_points(
 }
 
 fn add_three_points(
-    points: &mut Vec<(f32, f32)>, three_points: ThreePoints) 
+    points: &mut Vec<Point>, three_points: ThreePoints) 
     -> ThreePointIds
 {
     let len = points.len();
 
-    let Point { x, y } = three_points.left_pos;
-    points.push((x, y));
+    let point = three_points.left_pos;
+    points.push(point);
 
-    let Point { x, y } = three_points.middle_pos;
-    points.push((x, y));
+    let point = three_points.middle_pos;
+    points.push(point);
 
-    let Point { x, y } = three_points.right_pos;
-    points.push((x, y));
+    let point = three_points.right_pos;
+    points.push(point);
 
     ThreePointIds {
         left_id: PointId { id: len },
@@ -128,11 +129,108 @@ fn add_bezier_from_two_three_points(
     }
 }
 
+fn add_point(points: &mut Vec<Point>, point: Point) -> PointId {
+    let id = points.len();
+    points.push(point);
+    PointId { id }
+}
+
+fn add_bezier(beziers: &mut Vec<Bezier>, bezier: Bezier) -> BezierId {
+    let id = beziers.len();
+    beziers.push(bezier);
+    BezierId { id }
+}
+
+
+fn turn_back_map_fn(
+    input: (Point, Point, LocationId, LocationId), 
+    config: &Config,
+    points: &mut Vec<Point>,
+    beziers: &mut Vec<Bezier>)
+    -> CrossSection
+{
+    let (dir, pos, from, to) = input;
+
+    let phi = std::f32::consts::PI / 4.0;
+    let phi2 = phi / 2.0;
+
+    let ey = dir;
+    let ex = dir.turn_right_90_degree();
+    
+    let mut point_it = (0..5).into_iter()
+        .map(|i| {
+            let angle = (i as f32) * phi;
+            let x = config.lane_width * f32::cos(angle);
+            let y = config.lane_width * f32::sin(angle);
+            pos + x * ex + y * ey
+        });
+
+    let middle_point_it = (0..5).into_iter()
+        .map(|i| {
+            let angle = (i as f32) * phi + phi2;
+            let radius = config.lane_width / f32::cos(phi2);
+            let x = radius * f32::cos(angle);
+            let y = radius * f32::sin(angle);
+            pos + x * ex + y * ey
+        });
+
+    let prev_point: Point = point_it.next().unwrap();
+    let mut prev_point_id = add_point(points, prev_point);
+
+    let center_point_id = add_point(points, pos);
+
+    let center_bezier = add_bezier(beziers,
+        Bezier {
+            point1: center_point_id,
+            middle: pos,
+            point2: center_point_id,
+        }
+    );
+
+    let directed_center_bezier = 
+        DirectedBezier { 
+            is_forward: true,
+            bezier: center_bezier,
+        };
+
+    let mut left = Vec::<DirectedBezier>::new();
+    let mut right = Vec::<DirectedBezier>::new();
+
+    for (point, middle) in point_it.zip(middle_point_it) {
+        let point_id = add_point(points, point);
+        let bezier = add_bezier(
+            beziers,
+            Bezier {
+                point1: prev_point_id,
+                middle,
+                point2: point_id,
+            });
+
+        let directed_bezier = 
+            DirectedBezier {
+                is_forward: true,
+                bezier,
+            };
+
+        left.push(directed_center_bezier);
+        right.push(directed_bezier);
+
+        prev_point_id = point_id;
+    }
+
+    CrossSection {
+        from,
+        across: to,
+        to: from,
+        left,
+        right,
+    }
+}
 
 impl Road {
     pub fn from(backbone: &Backbone, config: &Config) -> Self {
         let mut locations = backbone.locations.clone();
-        let mut points: Vec<(f32, f32)> = vec![];
+        let mut points: Vec<Point> = vec![];
         let mut beziers: Vec<Bezier> = vec![];
         let mut lanes: Vec<Lane> = vec![];
         let mut cross_sections: Vec<CrossSection> = vec![];
@@ -171,20 +269,20 @@ impl Road {
                     );
 
                 left_lane.right.push(DirectedBezier {
-                    bezier_id: bezier_ids.left_id,
+                    bezier: bezier_ids.left_id,
                     is_forward: false,
                 });
                 left_lane.left.push(DirectedBezier {
-                    bezier_id: bezier_ids.middle_id,
+                    bezier: bezier_ids.middle_id,
                     is_forward: false,
                 });
 
                 right_lane.left.push(DirectedBezier {
-                    bezier_id: bezier_ids.middle_id, 
+                    bezier: bezier_ids.middle_id, 
                     is_forward: true,
                 });
                 right_lane.right.push(DirectedBezier {
-                    bezier_id: bezier_ids.right_id,
+                    bezier: bezier_ids.right_id,
                     is_forward: true,
                 });
 
@@ -232,20 +330,20 @@ impl Road {
                     );
 
                 left_section.right.push(DirectedBezier {
-                    bezier_id: bezier_ids.left_id,
+                    bezier: bezier_ids.left_id,
                     is_forward: false,
                 });
                 left_section.left.push(DirectedBezier {
-                    bezier_id: bezier_ids.middle_id,
+                    bezier: bezier_ids.middle_id,
                     is_forward: false,
                 });
 
                 right_section.left.push(DirectedBezier {
-                    bezier_id: bezier_ids.middle_id, 
+                    bezier: bezier_ids.middle_id, 
                     is_forward: true,
                 });
                 right_section.right.push(DirectedBezier {
-                    bezier_id: bezier_ids.right_id,
+                    bezier: bezier_ids.right_id,
                     is_forward: true,
                 });
 
@@ -259,6 +357,39 @@ impl Road {
             cross_sections.push(left_section);
             cross_sections.push(right_section);
         }
+
+
+        let last_cross_section_it = backbone.roads.iter()
+            .map(|r| {
+                let last = r.points.iter().last()
+                    .expect("backbone last: road.points can't be empty");
+
+                let last_dir = backbone.points[last.id].direction.normalize();
+                let last_pos = backbone.points[last.id].position;
+
+                (last_dir, last_pos, r.from, r.to)
+            })
+            .map(|input| {
+                turn_back_map_fn(input, config, &mut points, &mut beziers)
+            });
+
+        cross_sections.extend(last_cross_section_it);
+
+        let first_cross_section_it = backbone.roads.iter()
+            .map(|r| {
+                let first = r.points.iter().next()
+                    .expect("backbone first: road.points can't be empty");
+
+                let first_dir = backbone.points[first.id].direction.normalize();
+                let first_pos = backbone.points[first.id].position;
+
+                (-1.0 * first_dir, first_pos, r.to, r.from)
+            })
+            .map(|input| {
+                turn_back_map_fn(input, config, &mut points, &mut beziers)
+            });
+
+        cross_sections.extend(first_cross_section_it);
 
         for (id, lane) in lanes.iter().enumerate() {
             let id = LaneId { id };
@@ -316,8 +447,8 @@ impl Backbone {
     {
         let len = self.points.len();
         self.points.push(PointBackbone {
-            position: position,
-            direction: direction,
+            position: Point::from(position),
+            direction: Point::from(direction),
         });
         PointId { id: len }
     }

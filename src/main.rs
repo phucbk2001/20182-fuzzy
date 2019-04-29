@@ -5,12 +5,13 @@ mod config;
 mod glhelper;
 mod camera;
 mod road;
-mod context;
 mod car;
 mod window;
 mod action;
 mod reducer;
 mod fuzzy;
+mod init;
+mod context;
 
 use std::time::Instant;
 
