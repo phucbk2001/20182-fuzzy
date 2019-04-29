@@ -14,7 +14,7 @@ use road::{Road, LocationId};
 use std::time::{Instant};
 
 #[allow(dead_code)]
-const DESTINATION_EFFECTIVE_RANGE: f32 = 3.0;
+const DESTINATION_EFFECTIVE_RANGE: f32 = 0.8;
 
 #[derive(Copy, Clone)]
 pub struct ForCar {}
@@ -189,6 +189,7 @@ impl CarSystem {
         let current = Instant::now();
         let delta = current.duration_since(self.prev_instant);
         let dt: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
+        self.prev_instant = current;
 
         for (e, car) in self.cars.iter_mut() {
             if self.em.is_alive(*e) { 
@@ -233,9 +234,11 @@ impl CarSystem {
                     };
                 car.angle = angle;
                 car.is_turning_left = is_turning_left;
+
+                if (car.destination - car.position).len() < DESTINATION_EFFECTIVE_RANGE {
+                    self.em.deallocate(*e);
+                }
             }
         }
-
-        self.prev_instant = current;
     }
 }

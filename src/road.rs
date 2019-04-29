@@ -3,17 +3,14 @@ pub mod math;
 pub mod renderer;
 
 use crate::bezier;
-use crate::config;
+use crate::config::Config;
 
 use bezier::Point;
 use bezier::Line;
 
-pub use self::math::*;
+use std::time::{Instant};
 
-#[derive(Clone)]
-pub struct Location {
-    pub name: String,
-}
+pub use self::math::*;
 
 #[derive(Debug)]
 #[derive(Copy, Clone)]
@@ -27,14 +24,51 @@ impl PartialEq for LocationId {
     }
 }
 
+impl Eq for LocationId {}
+
 #[derive(Copy, Clone)]
 pub struct BezierId {
-    pub id: usize,
+    id: usize,
 }
 
 #[derive(Copy, Clone)]
 pub struct PointId {
-    pub id: usize,
+    id: usize,
+}
+
+#[derive(Copy, Clone)]
+pub struct LaneId {
+    id: usize,
+}
+
+impl PartialEq for LaneId {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum StreetLightColor {
+    Green,
+    YellowToGreen,
+    YellowToRed,
+    RedToYellow,
+}
+
+#[derive(Copy, Clone)]
+pub enum Color {
+    Red,
+    Green,
+    Yellow,
+}
+
+#[derive(Clone)]
+pub struct Location {
+    pub name: String,
+    pub incoming_lanes: Vec<LaneId>,
+    pub street_light_index: usize,
+    pub street_light_time: f32,
+    pub street_light_color: StreetLightColor,
 }
 
 #[derive(Copy, Clone)]
@@ -74,6 +108,8 @@ pub struct Road {
 
     pub chosen_path: Vec<LocationId>,
     prev_chosen_path: Vec<LocationId>,
+
+    prev_instant: Instant,
 }
 
 // To construct the whole map
@@ -102,6 +138,66 @@ pub struct Backbone {
     pub points: Vec<PointBackbone>,
     pub roads: Vec<RoadBackbone>,
     pub cross_sections: Vec<CrossSectionBackbone>,
+}
+
+fn random_green_time(config: &Config) -> f32 {
+    config.min_green_duration +
+        (config.max_green_duration - config.min_green_duration)
+        * rand::random::<f32>()
+}
+
+fn update_lights(location: &mut Location, dt: f32, config: &Config) {
+    use StreetLightColor::*;
+
+    let time = location.street_light_time - dt;
+    let time = if time < 0.0 { 0.0 } else { time };
+
+    let len = location.incoming_lanes.len();
+    let index = location.street_light_index;
+    let next_index = |index| { (index + 1) % len };
+
+    let (index, color, new_time) = match location.street_light_color {
+        Green => {
+            if time == 0.0 {
+                let new_time = 2.0;
+                (index, YellowToRed, new_time)
+            }
+            else {
+                (index, Green, time)
+            }
+        },
+        YellowToRed => {
+            if time == 0.0 {
+                let new_time = 2.0;
+                (next_index(index), RedToYellow, new_time)
+            }
+            else {
+                (index, YellowToRed, time)
+            }
+        },
+        RedToYellow => {
+            if time == 0.0 {
+                let new_time = 2.0;
+                (index, YellowToGreen, new_time)
+            }
+            else {
+                (index, RedToYellow, time)
+            }
+        },
+        YellowToGreen => {
+            if time == 0.0 {
+                let new_time = random_green_time(config);
+                (index, Green, new_time)
+            }
+            else {
+                (index, YellowToGreen, time)
+            }
+        },
+    };
+
+    location.street_light_index = index;
+    location.street_light_time = new_time;
+    location.street_light_color = color;
 }
 
 impl Road {
@@ -142,5 +238,48 @@ impl Road {
 
     pub fn finish(&mut self) {
         self.prev_chosen_path = self.chosen_path.clone();
+    }
+
+    pub fn update_street_lights(&mut self, config: &Config) {
+        let current = Instant::now();
+        let delta = current.duration_since(self.prev_instant);
+        let dt: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
+        self.prev_instant = current;
+
+        for location in self.locations.iter_mut() {
+            update_lights(location, dt, config);
+        }
+    }
+
+
+    pub fn get_street_light_color(&self, lane: LaneId) -> Color {
+        use StreetLightColor::*;
+
+        let location = self.lanes[lane.id].to;
+        let location = &self.locations[location.id];
+        if location.incoming_lanes[location.street_light_index] == lane {
+            match location.street_light_color {
+                RedToYellow => Color::Red,
+                YellowToRed => Color::Yellow,
+                YellowToGreen => Color::Yellow,
+                Green => Color::Green,
+            }
+        }
+        else {
+            Color::Red
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_rand_f32() {
+        for _ in 0..10 {
+            let random = rand::random::<f32>();
+            assert!(random >= 0.0);
+            assert!(random <= 1.0);
+        }
     }
 }

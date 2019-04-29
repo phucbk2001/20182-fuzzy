@@ -1,4 +1,4 @@
-use crate::road::*;
+use super::*;
 
 #[derive(Copy, Clone)]
 struct ThreePoints {
@@ -25,7 +25,7 @@ struct ThreePointBezierIds {
 }
 
 fn point_id_to_three_points(
-    backbone: &Backbone, config: &config::Config,
+    backbone: &Backbone, config: &Config,
     point_id: &PointId) -> ThreePoints
 {
     let p = backbone.get_point(*point_id);
@@ -130,8 +130,8 @@ fn add_bezier_from_two_three_points(
 
 
 impl Road {
-    pub fn from(backbone: &Backbone, config: &config::Config) -> Self {
-        let locations = backbone.locations.clone();
+    pub fn from(backbone: &Backbone, config: &Config) -> Self {
+        let mut locations = backbone.locations.clone();
         let mut points: Vec<(f32, f32)> = vec![];
         let mut beziers: Vec<Bezier> = vec![];
         let mut lanes: Vec<Lane> = vec![];
@@ -260,15 +260,23 @@ impl Road {
             cross_sections.push(right_section);
         }
 
+        for (id, lane) in lanes.iter().enumerate() {
+            let id = LaneId { id };
+            let location = lane.to;
+            locations[location.id].incoming_lanes.push(id);
+        }
+
         Self {
-            locations: locations,
-            points: points,
-            beziers: beziers,
-            lanes: lanes,
-            cross_sections: cross_sections,
+            locations,
+            points,
+            beziers,
+            lanes,
+            cross_sections,
 
             chosen_path: vec![],
             prev_chosen_path: vec![],
+
+            prev_instant: std::time::Instant::now(),
         }
     }
 }
@@ -288,11 +296,15 @@ impl Backbone {
     }
 
     pub fn add_location(
-        &mut self, name: &str) -> LocationId 
+        &mut self, name: &str, config: &Config) -> LocationId 
     {
         let len = self.locations.len();
         self.locations.push(Location {
             name: String::from(name),
+            incoming_lanes: Vec::new(),
+            street_light_index: 0,
+            street_light_color: StreetLightColor::Green,
+            street_light_time: random_green_time(config),
         });
         LocationId { id: len }
     }

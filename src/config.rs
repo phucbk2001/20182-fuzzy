@@ -5,6 +5,10 @@ pub struct Config {
     pub front_wheel: f32,
     pub rear_wheel: f32,
     pub camera_width: f32,
+    pub streetlight_size: f32,
+    pub streetlight_distance: f32,
+    pub min_green_duration: f32,
+    pub max_green_duration: f32,
 }
 
 impl Config {
@@ -16,6 +20,10 @@ impl Config {
             front_wheel: 1.0,
             rear_wheel: 1.1,
             camera_width: 40.0,
+            streetlight_size: 2.0,
+            streetlight_distance: 2.0,
+            min_green_duration: 10.0,
+            max_green_duration: 15.0,
         }
     }
 }

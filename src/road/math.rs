@@ -1,5 +1,5 @@
 use crate::bezier;
-use super::{Road, Lane, CrossSection, LocationId};
+use super::{Road, Lane, CrossSection, LocationId, LaneId};
 use bezier::{Bezier, Point, Line};
 
 const MAX_INTERSECT_DISTANCE: f32 = 100.0;
@@ -9,7 +9,7 @@ const FAR_POINT: Point = Point { x: 100000.0, y: 100000.0 };
 pub struct PathProperties {
     pub left_beziers: Vec<Bezier>,
     pub right_beziers: Vec<Bezier>,
-    pub street_lights: Vec<Point>,
+    pub street_lights: Vec<(LaneId, Point)>,
 }
 
 fn path_to_lanes(path: &[LocationId]) 
@@ -103,7 +103,7 @@ impl PathProperties {
 
         let mut street_lights = Vec::new();
 
-        for lane in lane_it {
+        for (id, lane) in lane_it.enumerate() {
             let lane = find_lane(road, *lane);
             for bezier in lane.left.iter() {
                 let bezier = road.get_bezier(*bezier);
@@ -115,7 +115,7 @@ impl PathProperties {
             }
             let last_bezier = lane.right.last().unwrap();
             let last_bezier = road.get_bezier(*last_bezier);
-            street_lights.push(last_bezier.c);
+            street_lights.push((LaneId { id }, last_bezier.c));
         }
 
         for cs in cs_it {

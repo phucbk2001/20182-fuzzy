@@ -51,10 +51,10 @@ impl<'a> Context<'a> {
 
         let mut backbone = Backbone::new();
 
-        let location_a = backbone.add_location("A");
-        let location_b = backbone.add_location("B");
-        let location_c = backbone.add_location("C");
-        let location_d = backbone.add_location("D");
+        let location_a = backbone.add_location("A", &config);
+        let location_b = backbone.add_location("B", &config);
+        let location_c = backbone.add_location("C", &config);
+        let location_d = backbone.add_location("D", &config);
 
         let p1 = backbone.add_point((-20.0, -40.0), (0.0, 3.0));
         let p2 = backbone.add_point((-10.0, -10.0), (1.0, 2.0));
@@ -84,7 +84,7 @@ impl<'a> Context<'a> {
         let mut road = Road::from(&backbone, &config);
 
         let road_renderer = RoadRenderer::from(
-            &display, &road);
+            &display, &road, &config);
 
         road.chosen_path = 
             vec![location_a, location_b, location_c];
@@ -109,6 +109,7 @@ impl<'a> Context<'a> {
     }
 
     pub fn update(&mut self, display: &Display) {
+        self.road.update_street_lights(&self.config);
         self.car_system.update(&self.config);
         self.road_renderer.update(display, &self.road);
     }
@@ -124,7 +125,7 @@ impl<'a> Context<'a> {
         self.camera.set_dimensions(dims, &self.config);
 
         self.road_renderer.render(
-            target, self.camera.get_matrix());
+            target, &self.road, self.camera.get_matrix());
 
         self.car_renderer.render(
             target, &self.car_system, self.camera.get_matrix());

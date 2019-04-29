@@ -1,4 +1,8 @@
 mod chosen_path;
+mod streetlight;
+
+use streetlight::StreetLight;
+use crate::config::Config;
 
 use glium::implement_vertex;
 use glium::uniform;
@@ -55,6 +59,8 @@ pub struct RoadRenderer {
     pub road_color: [f32; 3],
     pub border_color: [f32; 3],
     pub chosen_color: [f32; 3],
+
+    streetlight: StreetLight,
 }
 
 const BEZIER_VCOUNT: u32 = 16;
@@ -212,7 +218,7 @@ fn construct_buffers(
 }
 
 impl RoadRenderer {
-    pub fn from(display: &Display, road: &road::Road) -> Self {
+    pub fn from(display: &Display, road: &road::Road, config: &Config) -> Self {
         let program = glium::Program::from_source(
             display, VERTEX_SHADER_SRC, FRAGMENT_SHADER_SRC, None).unwrap();
 
@@ -244,17 +250,21 @@ impl RoadRenderer {
             road_color: [40.0/255.0, 40.0/255.0, 40.0/255.0],
             border_color: [0.0, 1.0, 1.0],
             chosen_color: [1.0, 0.0, 0.0],
+
+            streetlight: StreetLight::new(display, road, config),
         }
     }
 
-    pub fn render<T>(&self, target: &mut T, matrix: &na::Matrix4<f32>) 
+    pub fn render<T>(
+        &self, target: &mut T, road: &road::Road,
+        view_proj: &na::Matrix4<f32>)
         where T: Surface
     {
         use glium::draw_parameters::DrawParameters;
         let mut params: DrawParameters = Default::default();
         params.line_width = Some(1.0);
 
-        let matrix_ref: &[[f32; 4]; 4] = matrix.as_ref();
+        let matrix_ref: &[[f32; 4]; 4] = view_proj.as_ref();
 
         let uniform = uniform! {
             matrix: *matrix_ref,
@@ -289,6 +299,8 @@ impl RoadRenderer {
             &self.program,
             &uniform, 
             &params).unwrap();
+
+        self.streetlight.render(target, road, view_proj);
     }
 
     pub fn update(&mut self, display: &Display, road: &road::Road) {

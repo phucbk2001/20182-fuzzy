@@ -100,7 +100,7 @@ impl CarRenderer {
             vertex_buffers: vec![vertex_buffer],
             index_buffers: vec![index_buffer],
             textures: vec![texture],
-            program: program,
+            program,
         }
     }
 
