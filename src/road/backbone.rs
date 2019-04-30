@@ -410,6 +410,21 @@ impl Road {
             prev_instant: std::time::Instant::now(),
         }
     }
+
+    pub fn new() -> Self {
+        Self {
+            locations: Vec::new(),
+            points: Vec::new(),
+            beziers: Vec::new(),
+            lanes: Vec::new(),
+            cross_sections: Vec::new(),
+
+            chosen_path: Vec::new(),
+            prev_chosen_path: Vec::new(),
+
+            prev_instant: std::time::Instant::now(),
+        }
+    }
 }
 
 impl Backbone {

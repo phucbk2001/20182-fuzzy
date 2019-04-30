@@ -253,7 +253,9 @@ impl Road {
         self.prev_instant = current;
 
         for location in self.locations.iter_mut() {
-            update_lights(location, dt, config);
+            if location.incoming_lanes.len() > 1 {
+                update_lights(location, dt, config);
+            }
         }
     }
 

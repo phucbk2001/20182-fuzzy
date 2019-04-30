@@ -22,8 +22,8 @@ impl Config {
             camera_width: 40.0,
             streetlight_size: 2.0,
             streetlight_distance: 2.0,
-            min_green_duration: 10.0,
-            max_green_duration: 15.0,
+            min_green_duration: 6.0,
+            max_green_duration: 10.0,
         }
     }
 }
