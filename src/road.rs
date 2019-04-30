@@ -205,6 +205,12 @@ fn update_lights(location: &mut Location, dt: f32, config: &Config) {
     location.street_light_color = color;
 }
 
+pub fn street_light_exists(road: &Road, lane: LaneId) -> bool {
+    let lane = &road.lanes[lane.id];
+    let location = &road.locations[lane.to.id];
+    location.incoming_lanes.len() > 1
+}
+
 impl Road {
     fn get_point(&self, point_id: PointId) -> Point {
         self.points[point_id.id]

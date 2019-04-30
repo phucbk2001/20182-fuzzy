@@ -240,6 +240,7 @@ impl Car {
         else {
             fuzzy.fuzzy.set_input(fuzzy.distance.input, 1000.0);
             fuzzy.fuzzy.set_input(fuzzy.light_status.input, 1.0);
+            // println!("{:?} {:?}", Instant::now(), self.position);
         }
     }
 

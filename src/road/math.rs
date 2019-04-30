@@ -1,5 +1,8 @@
 use crate::bezier;
-use super::{Road, CrossSectionId, LocationId, LaneId};
+use super::{
+    Road, CrossSectionId, LocationId, LaneId,
+    street_light_exists,
+};
 use bezier::{Bezier, Point, Line, dot};
 
 const MAX_INTERSECT_DISTANCE: f32 = 100.0;
@@ -120,9 +123,11 @@ impl PathProperties {
                 right_beziers.push(bezier);
             }
 
-            let last_bezier = lane_ref.right.last().unwrap();
-            let last_bezier = road.get_bezier(*last_bezier);
-            street_lights.push((lane, last_bezier.c));
+            if street_light_exists(road, lane) {
+                let last_bezier = lane_ref.right.last().unwrap();
+                let last_bezier = road.get_bezier(*last_bezier);
+                street_lights.push((lane, last_bezier.c));
+            }
         }
 
         for cs in cs_it {

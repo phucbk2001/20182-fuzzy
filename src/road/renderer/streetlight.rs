@@ -1,7 +1,7 @@
 use nalgebra as na;
 use crate::config::Config;
 use crate::glhelper;
-use super::super::{Road, Lane, LaneId, Color};
+use super::super::{Road, Lane, LaneId, Color, street_light_exists};
 use crate::bezier::Point;
 
 use glium::implement_vertex;
@@ -133,6 +133,9 @@ impl StreetLight {
                 let pos = lane_to_streetlight_position(
                     road, lane, config.streetlight_distance);
                 (id, pos)
+            })
+            .filter(|&(id, _pos)| {
+                street_light_exists(road, id)
             })
             .collect();
 
