@@ -65,6 +65,13 @@ pub struct Fuzzy {
     rule_sets: Vec<RuleSet>,
 }
 
+impl OutputSet {
+    fn set_input_membership(&mut self, membership: f32) {
+        self.input_membership = f32::max(
+            membership, self.input_membership);
+    }
+}
+
 impl Fuzzy {
     pub fn new() -> Self {
         Self {
@@ -94,10 +101,6 @@ impl Fuzzy {
         debug_assert!(id.id < self.inputs.len());
         self.inputs[id.id].value = value;
     }
-
-    fn get_input(&self, id: InputId) -> f32 {
-        self.inputs[id.id].value
-    }
 }
 
 impl Fuzzy {
@@ -117,10 +120,6 @@ impl Fuzzy {
         debug_assert!(id.id < self.outputs.len());
         self.outputs[id.id].value
     }
-
-    fn get_output_mut(&mut self, output: OutputId) -> &mut Output {
-        &mut self.outputs[output.id]
-    }
 }
 
 impl Fuzzy {
@@ -138,16 +137,6 @@ impl Fuzzy {
         self.input_sets.push(input_set);
         InputSetId { id }
     }
-
-    fn get_input_set(&self, input_set: InputSetId) -> &InputSet {
-        &self.input_sets[input_set.id]
-    }
-
-    fn get_input_set_mut(&mut self, input_set: InputSetId) 
-        -> &mut InputSet 
-    {
-        &mut self.input_sets[input_set.id]
-    }
 }
 
 impl Fuzzy {
@@ -163,18 +152,6 @@ impl Fuzzy {
         let id = self.output_sets.len();
         self.output_sets.push(output_set);
         OutputSetId { id }
-    }
-
-    fn get_output_set(&self, output_set: OutputSetId)
-        -> &OutputSet
-    {
-        &self.output_sets[output_set.id]
-    }
-
-    fn get_output_set_mut(&mut self, output_set: OutputSetId)
-        -> &mut OutputSet
-    {
-        &mut self.output_sets[output_set.id]
     }
 }
 
@@ -192,10 +169,6 @@ impl Fuzzy {
         self.rules.push(rule);
         RuleId { id }
     }
-
-    fn get_rule(&self, rule: RuleId) -> &Rule {
-        &self.rules[rule.id]
-    }
 }
 
 impl Fuzzy {
@@ -206,10 +179,6 @@ impl Fuzzy {
         let id = self.rule_sets.len();
         self.rule_sets.push(rule_set);
         RuleSetId { id }
-    }
-
-    fn get_rule_set(&self, rule_set: RuleSetId) -> &RuleSet {
-        &self.rule_sets[rule_set.id]
     }
 }
 

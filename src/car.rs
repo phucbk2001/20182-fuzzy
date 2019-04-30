@@ -9,12 +9,13 @@ use fuzzy::CarFuzzy;
 use bezier::{Point};
 
 use crate::road;
-use road::{Road, LocationId};
+use road::{Road, LocationId, LaneId};
 
 use std::time::{Instant};
 
 #[allow(dead_code)]
 const DESTINATION_EFFECTIVE_RANGE: f32 = 0.8;
+const MAX_VELOCITY: f32 = 10.0;
 
 #[derive(Copy, Clone)]
 pub struct ForCar {}
@@ -45,7 +46,7 @@ impl Default for Car {
         Car {
             position: Point { x: 0.0, y: 0.0 },
             direction: Point { x: 1.0, y: 0.0 },
-            velocity: 2.0,
+            velocity: MAX_VELOCITY,
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
             car_type: CarType::Fast,
@@ -146,21 +147,144 @@ fn move_car(input: MoveInput) -> MoveOutput {
     MoveOutput { position, direction }
 }
 
+fn get_lane_light_status(road: &Road, lane: LaneId) -> f32 {
+    use road::StreetLightColor::*;
+
+    let location = road.lanes[lane.id].to;
+    let location = &road.locations[location.id];
+
+    let t = location.street_light_time;
+    if lane == location.incoming_lanes[location.street_light_index] {
+        match location.street_light_color {
+            RedToYellow => {
+                6.0 - t / 2.0
+            },
+            YellowToRed => {
+                4.0 - t
+            },
+            YellowToGreen => {
+                8.0 - t
+            },
+            Green => {
+                if t > 2.0 {
+                    1.0
+                }
+                else {
+                    2.0 - t / 2.0
+                }
+            }
+        }
+    }
+    else {
+        5.0
+    }
+}
+
 impl Car {
     pub fn from_path(road: &Road, path: &[LocationId]) -> Self {
         let (pos, dest, dir) = calculate_start_and_destination(road, path);
+        let path_properties = road::PathProperties::new(road, path);
 
         Self {
             position: pos,
             direction: dir,
-            velocity: 5.0,
+            velocity: MAX_VELOCITY,
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
             car_type: CarType::Fast,
             destination: dest,
 
-            path_properties: road::PathProperties::new(road, path),
+            path_properties,
         }
+    }
+
+    fn do_move(&mut self, dt: f32, config: &Config) {
+        let input = MoveInput {
+            front_wheel: config.front_wheel,
+            rear_wheel: config.rear_wheel,
+            width: config.car_width,
+            position: self.position,
+            direction: self.direction,
+            velocity: self.velocity,
+            angle: self.angle,
+            dt,
+            is_turning_left: self.is_turning_left,
+        };
+
+        let output = move_car(input);
+        self.position = output.position;
+        self.direction = output.direction;
+    }
+
+    fn fuzzy_set_deviation(&self, fuzzy: &mut CarFuzzy, config: &Config) {
+        let pos = self.position + self.direction * (config.car_width / 2.0);
+        let line = bezier::Line { 
+            position: pos,
+            direction: self.direction.turn_right_90_degree(),
+        };
+        let (left, right) = self.path_properties
+            .nearest_intersection(line);
+        let dx = (left - pos).len() - config.car_width / 2.0;
+        let dy = (right - pos).len() - config.car_width / 2.0;
+
+        fuzzy.fuzzy.set_input(fuzzy.deviation.input, dx / (dx + dy));
+    }
+
+    fn fuzzy_set_light_status_distance(&self, fuzzy: &mut CarFuzzy, road: &Road) {
+        if let Some((lane, light_pos)) = road::math::nearest_street_light(
+            &self.path_properties.street_lights, self.position, self.direction)
+        {
+            fuzzy.fuzzy.set_input(fuzzy.distance.input, (light_pos - self.position).len());
+            fuzzy.fuzzy.set_input(fuzzy.light_status.input, get_lane_light_status(road, lane));
+        }
+        else {
+            fuzzy.fuzzy.set_input(fuzzy.distance.input, 1000.0);
+            fuzzy.fuzzy.set_input(fuzzy.light_status.input, 1.0);
+        }
+    }
+
+    fn fuzzy_output_set_steering(&mut self, fuzzy: &CarFuzzy) {
+        let output = fuzzy.fuzzy.get_output(fuzzy.steering.output);
+        let output = (output - 0.5) / 0.5;
+
+        let angle = f32::abs(output) * std::f32::consts::PI / 2.0;
+        let is_turning_left = 
+            if output < 0.0 {
+                true
+            }
+            else {
+                false
+            };
+        self.angle = angle;
+        self.is_turning_left = is_turning_left;
+    }
+
+    fn fuzzy_output_set_speed(&mut self, fuzzy: &CarFuzzy) {
+        let output = fuzzy.fuzzy.get_output(fuzzy.speed.output);
+        let output = if f32::is_finite(output) { output } else { 0.0 };
+        let output = 
+            if output < 0.0 {
+                0.0 
+            }
+            else if output <= 1.0 {
+                output
+            }
+            else {
+                1.0
+            };
+
+        let v = MAX_VELOCITY * output;
+        self.velocity = if v < 0.2 { 0.0 } else { v };
+    }
+
+    fn do_fuzzy(&mut self, fuzzy: &mut CarFuzzy, road: &Road, config: &Config) {
+        self.fuzzy_set_deviation(fuzzy, config);
+        self.fuzzy_set_light_status_distance(fuzzy, road);
+
+        fuzzy.fuzzy.evaluate(fuzzy.simple_rule_set);
+
+        self.fuzzy_output_set_steering(fuzzy);
+        self.fuzzy_output_set_speed(fuzzy);
     }
 }
 
@@ -185,7 +309,7 @@ impl CarSystem {
         self.cars.add(&mut self.em, car);
     }
 
-    pub fn update(&mut self, config: &Config) {
+    pub fn update(&mut self, road: &Road, config: &Config) {
         let current = Instant::now();
         let delta = current.duration_since(self.prev_instant);
         let dt: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
@@ -193,47 +317,9 @@ impl CarSystem {
 
         for (e, car) in self.cars.iter_mut() {
             if self.em.is_alive(*e) { 
-                let input = MoveInput {
-                    front_wheel: config.front_wheel,
-                    rear_wheel: config.rear_wheel,
-                    width: config.car_width,
-                    position: car.position,
-                    direction: car.direction,
-                    velocity: car.velocity,
-                    angle: car.angle,
-                    dt,
-                    is_turning_left: car.is_turning_left,
-                };
+                car.do_move(dt, config);
 
-                let output = move_car(input);
-                car.position = output.position;
-                car.direction = output.direction;
-
-                let pos = car.position + car.direction * (config.car_width / 2.0);
-                let line = bezier::Line { 
-                    position: pos,
-                    direction: car.direction.turn_right_90_degree(),
-                };
-                let (left, right) = car.path_properties
-                    .nearest_intersection(line);
-                let dx = (left - pos).len() - config.car_width / 2.0;
-                let dy = (right - pos).len() - config.car_width / 2.0;
-
-                self.fuzzy.fuzzy.set_input(self.fuzzy.deviation.input, dx / (dx + dy));
-                self.fuzzy.fuzzy.evaluate(self.fuzzy.simple_rule_set);
-                let output = self.fuzzy.fuzzy.get_output(self.fuzzy.steering.output);
-                let output = (output - 0.5) / 0.5;
-
-                let angle = f32::abs(output) * std::f32::consts::PI / 2.1;
-                let is_turning_left = 
-                    if output < 0.0 {
-                        true
-                    }
-                    else {
-                        false
-                    };
-                car.angle = angle;
-                car.is_turning_left = is_turning_left;
+                car.do_fuzzy(&mut self.fuzzy, road, config);
 
                 if (car.destination - car.position).len() < DESTINATION_EFFECTIVE_RANGE {
                     self.em.deallocate(*e);

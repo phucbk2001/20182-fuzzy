@@ -72,7 +72,7 @@ impl<'a> Context<'a> {
 
     pub fn update(&mut self, display: &Display) {
         self.road.update_street_lights(&self.config);
-        self.car_system.update(&self.config);
+        self.car_system.update(&self.road, &self.config);
         self.road_renderer.update(display, &self.road);
     }
 

@@ -38,6 +38,11 @@ pub struct PointId {
 
 #[derive(Copy, Clone)]
 pub struct LaneId {
+    pub id: usize,
+}
+
+#[derive(Copy, Clone)]
+pub struct CrossSectionId {
     id: usize,
 }
 

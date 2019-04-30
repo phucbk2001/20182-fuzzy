@@ -1,6 +1,6 @@
 use super::*;
 
-const INTEGRAL_STEP: usize = 20;
+const INTEGRAL_STEP: usize = 40;
 
 fn integral(x1: f32, x2: f32, y1: f32, y2: f32) -> f32 {
     let mut result = 
@@ -10,115 +10,170 @@ fn integral(x1: f32, x2: f32, y1: f32, y2: f32) -> f32 {
     result
 }
 
+fn compute_input_membership(
+    rules: &Vec<Rule>,
+    input_sets: &Vec<InputSet>,
+    rule: RuleId) 
+    -> f32 
+{
+    let mut result = 1.0;
+    for input_set in rules[rule.id].input_sets.iter() {
+        result = f32::min(result, input_sets[input_set.id].membership);
+    }
+    result
+}
+
+fn collect_dirty_input_sets(
+    rule_sets: &Vec<RuleSet>,
+    rules: &Vec<Rule>,
+    rule_set: RuleSetId) 
+    -> Vec<InputSetId> 
+{
+    let mut dirty_input_sets: Vec<InputSetId> =
+        rule_sets[rule_set.id].rules.iter()
+            .flat_map(|rule| rules[rule.id].input_sets.iter())
+            .map(|item| *item)
+            .collect();
+
+    use std::cmp::Ordering;
+
+    let ordering = |a: &InputSetId, b: &InputSetId| {
+        if a.id < b.id {
+            Ordering::Less
+        }
+        else if a.id > b.id {
+            Ordering::Greater
+        }
+        else {
+            Ordering::Equal
+        }
+    };
+
+    dirty_input_sets.sort_by(ordering);
+    dirty_input_sets.dedup_by(|a, b| a.id == b.id);
+
+    dirty_input_sets
+}
+
+fn output_fuzzy_function(
+    output_sets: &Vec<OutputSet>,
+    output: &Output, x: f32)
+    -> f32
+{
+    let mut max = 0.0;
+    for output_set in output.cached_output_sets.iter() {
+        let output_set_result = f32::min(
+            output_sets[output_set.id].input_membership,
+            (output_sets[output_set.id].f)(x)
+        );
+        max = f32::max(max, output_set_result);
+    }
+    max
+}
+
+fn defuzzificate(
+    output_sets: &Vec<OutputSet>,
+    output: &Output) 
+    -> f32 
+{
+    let min = output.min;
+    let max = output.max;
+
+    let mut x1: f32 = min;
+
+    let mut nominator: f32 = 0.0;
+    let mut denominator: f32 = 0.0;
+
+    for i in 0..INTEGRAL_STEP {
+        let x2 = (i + 1) as f32 * (max - min) / (INTEGRAL_STEP as f32) + min;
+
+        let y1 = output_fuzzy_function(
+            output_sets, output, x1);
+        let y2 = output_fuzzy_function(
+            output_sets, output, x2);
+
+        nominator += integral(x1, x2, y1, y2);
+        denominator += (x2 - x1) * (y1 + y2) / 2.0;
+
+        x1 = x2;
+    }
+
+    nominator / denominator
+}
+
 impl Fuzzy {
-    fn compute_input_membership(&self, rule: RuleId) -> f32 {
-        let mut result = 1.0;
-        for input_set in self.get_rule(rule).input_sets.iter() {
-            result = f32::min(result, self.get_input_set(*input_set).membership);
-        }
-        result
-    }
-
-    fn collect_dirty_input_sets(&self, rule_set: RuleSetId) 
-        -> Vec<InputSetId> 
-    {
-        let mut dirty_input_sets: Vec<InputSetId> =
-            self.get_rule_set(rule_set).rules.iter()
-                .flat_map(|rule| self.get_rule(*rule).input_sets.iter())
-                .map(|item| *item)
-                .collect();
-
-        use std::cmp::Ordering;
-
-        let ordering = |a: &InputSetId, b: &InputSetId| {
-            if a.id < b.id {
-                Ordering::Less
-            }
-            else if a.id > b.id {
-                Ordering::Greater
-            }
-            else {
-                Ordering::Equal
-            }
-        };
-
-        dirty_input_sets.sort_by(ordering);
-        dirty_input_sets.dedup_by(|a, b| a.id == b.id);
-
-        dirty_input_sets
-    }
-
-    fn output_fuzzy_function(&self, output: &Output, x: f32) -> f32 {
-        let mut max = 0.0;
-        for output_set in output.cached_output_sets.iter() {
-            let output_set_result = f32::min(
-                self.get_output_set(*output_set).input_membership,
-                (self.get_output_set(*output_set).f)(x)
-            );
-            max = f32::max(max, output_set_result);
-        }
-        max
-    }
-
-    fn defuzzificate(&self, output: &Output) -> f32 {
-        let min = output.min;
-        let max = output.max;
-
-        let mut x1: f32 = min;
-        let mut x2: f32;
-
-        let mut nominator: f32 = 0.0;
-        let mut denominator: f32 = 0.0;
-
-        for i in 0..INTEGRAL_STEP {
-            x2 = (i + 1) as f32 * (max - min) / (INTEGRAL_STEP as f32) + min;
-            let y1 = self.output_fuzzy_function(output, x1);
-            let y2 = self.output_fuzzy_function(output, x2);
-
-            nominator += integral(x1, x2, y1, y2);
-            denominator += (x2 - x1) * (y1 + y2) / 2.0;
-
-            x1 = x2;
-        }
-
-        nominator / denominator
-    }
-
     pub fn evaluate(&mut self, rule_set: RuleSetId) {
-        let dirty_input_sets = self.collect_dirty_input_sets(rule_set);
+        let inputs = &self.inputs;
+        let input_sets = &mut self.input_sets;
+        let outputs = &mut self.outputs;
+        let output_sets = &mut self.output_sets;
+        let rules = &mut self.rules;
+        let rule_sets = &self.rule_sets;
+
+        let dirty_input_sets = 
+            collect_dirty_input_sets(
+                rule_sets, rules, rule_set);
+
         for input_set in dirty_input_sets.iter() {
-            self.get_input_set_mut(*input_set).membership = {
-                let f = &self.get_input_set(*input_set).f;
-                let input = self.get_input_set(*input_set).input;
-                let value = self.get_input(input);
+            input_sets[input_set.id].membership = {
+                let f = &input_sets[input_set.id].f;
+                let input = input_sets[input_set.id].input;
+                let value = inputs[input.id].value;
                 f(value)
             };
         }
 
-        let rules: Vec<RuleId> = self.get_rule_set(rule_set).rules.clone();
+        let active_rules: Vec<RuleId> = rule_sets[rule_set.id].rules.clone();
 
-        for output in self.outputs.iter_mut() {
+        for output in outputs.iter_mut() {
             output.cached_output_sets.clear();
         }
 
-        for rule in rules.iter() {
-            let input_membership = self.compute_input_membership(*rule);
-            let output_set = self.get_rule(*rule).output_set;
-            self.get_output_set_mut(output_set)
-                .input_membership = input_membership;
-            self.get_output_mut(self.get_output_set(output_set).output)
+        for rule in active_rules.iter() {
+            let output_set = rules[rule.id].output_set;
+            output_sets[output_set.id].input_membership = 0.0;
+        }
+
+        for rule in active_rules.iter() {
+            let input_membership = 
+                compute_input_membership(rules, input_sets, *rule);
+
+            let output_set = rules[rule.id].output_set;
+
+            output_sets[output_set.id].set_input_membership(input_membership);
+
+            outputs[output_sets[output_set.id].output.id]
                 .cached_output_sets.push(output_set);
         }
 
+        for output in outputs.iter_mut() {
+            use std::cmp::Ordering;
+
+            let ordering = |a: &OutputSetId, b: &OutputSetId| {
+                if a.id < b.id {
+                    Ordering::Less
+                }
+                else if a.id > b.id {
+                    Ordering::Greater
+                }
+                else {
+                    Ordering::Equal
+                }
+            };
+
+            output.cached_output_sets.sort_by(ordering);
+            output.cached_output_sets.dedup_by(|a, b| a.id == b.id);
+        }
+
         let output_results: Vec<(OutputId, f32)> =
-            self.outputs.iter().enumerate()
+            outputs.iter().enumerate()
                 .filter(|(_index, output)| !output.cached_output_sets.is_empty())
-                .map(|(id, output)| (OutputId { id }, self.defuzzificate(output)))
+                .map(|(id, output)| (OutputId { id }, defuzzificate(output_sets, output)))
                 .collect();
 
         for result in output_results.iter() {
             let (output, value) = *result;
-            self.get_output_mut(output).value = value;
+            outputs[output.id].value = value;
         }
     }
 }
@@ -161,29 +216,32 @@ mod tests {
 
         fuzzy.evaluate(rs1);
 
-        assert_relative_eq!(fuzzy.get_input_set(is1).membership, 0.25);
-        assert_relative_eq!(fuzzy.get_input_set(is2).membership, 1.0);
-        assert_relative_eq!(fuzzy.get_input_set(is3).membership, 0.75);
-        assert_relative_eq!(fuzzy.get_input_set(is4).membership, 0.0);
+        assert_relative_eq!(fuzzy.input_sets[is1.id].membership, 0.25);
+        assert_relative_eq!(fuzzy.input_sets[is2.id].membership, 1.0);
+        assert_relative_eq!(fuzzy.input_sets[is3.id].membership, 0.75);
+        assert_relative_eq!(fuzzy.input_sets[is4.id].membership, 0.0);
 
-        assert_relative_eq!(fuzzy.get_output_set(os1).input_membership, 0.25);
-        assert_relative_eq!(fuzzy.get_output_set(os2).input_membership, 0.0);
+        assert_relative_eq!(fuzzy.output_sets[os1.id].input_membership, 0.25);
+        assert_relative_eq!(fuzzy.output_sets[os2.id].input_membership, 0.0);
     
         assert_relative_eq!(
-            fuzzy.output_fuzzy_function(&fuzzy.outputs[o1.id], 0.25),
+            output_fuzzy_function(
+                &fuzzy.output_sets, &fuzzy.outputs[o1.id], 0.25),
             0.25
         );
         assert_relative_eq!(
-            fuzzy.output_fuzzy_function(&fuzzy.outputs[o1.id], 0.5),
+            output_fuzzy_function(
+                &fuzzy.output_sets, &fuzzy.outputs[o1.id], 0.5),
             0.25
         );
         assert_relative_eq!(
-            fuzzy.output_fuzzy_function(&fuzzy.outputs[o1.id], 0.125),
+            output_fuzzy_function(
+                &fuzzy.output_sets, &fuzzy.outputs[o1.id], 0.125),
             0.125
         );
         
-        assert_relative_eq!(fuzzy.get_output(o1), 0.5595238);
-        assert_relative_eq!(fuzzy.get_output(o2), 0.0);
+        assert_relative_eq!(fuzzy.outputs[o1.id].value, 0.5595238);
+        assert_relative_eq!(fuzzy.outputs[o2.id].value, 0.0);
     }
 
     #[test]

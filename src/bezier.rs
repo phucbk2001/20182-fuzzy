@@ -95,6 +95,10 @@ impl Mul<Point> for f32 {
     }
 }
 
+pub fn dot(a: Point, b: Point) -> f32 {
+    a.x * b.x + a.y * b.y
+}
+
 #[derive(Copy, Clone)]
 pub struct Bezier {
     pub a: Point,
@@ -546,5 +550,12 @@ mod tests {
         else {
             assert!(false);
         }
+    }
+
+    #[test]
+    fn test_dot() {
+        let p1 = Point { x: 1.0, y: 3.0 };
+        let p2 = Point { x: 2.0, y: 2.0 };
+        assert_relative_eq!(dot(p1, p2), 2.0 + 6.0);
     }
 }

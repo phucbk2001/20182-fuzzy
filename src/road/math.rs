@@ -1,9 +1,10 @@
 use crate::bezier;
-use super::{Road, Lane, CrossSection, LocationId, LaneId};
-use bezier::{Bezier, Point, Line};
+use super::{Road, CrossSectionId, LocationId, LaneId};
+use bezier::{Bezier, Point, Line, dot};
 
 const MAX_INTERSECT_DISTANCE: f32 = 100.0;
 const FAR_POINT: Point = Point { x: 100000.0, y: 100000.0 };
+const MAX_STREET_LIGHT_ANGLE: f32 = 60.0;
 
 #[derive(Clone)]
 pub struct PathProperties {
@@ -46,22 +47,25 @@ fn path_to_cross_sections(path: &[LocationId])
     cross_sections
 }
 
-fn find_lane(road: &Road, lane: (LocationId, LocationId)) -> &Lane {
+fn find_lane(road: &Road, lane: (LocationId, LocationId)) 
+    -> LaneId
+{
     let (from, to) = lane;
-    let lane = road.lanes.iter().find(
-        |&lane| lane.from == from && lane.to == to)
+    let (id, _) = road.lanes.iter().enumerate().find(
+        |&(_id, lane)| lane.from == from && lane.to == to)
         .expect("road::math Lane doesn't exist");
-    lane
+    LaneId { id }
 }
 
 fn find_cross_section(
     road: &Road, cross_section: (LocationId, LocationId, LocationId))
-    -> &CrossSection
+    -> CrossSectionId
 {
     let (from, across, to) = cross_section;
-    road.cross_sections.iter().find(
-        |&c| c.from == from && c.to == to && c.across == across)
-        .expect("road::math CrossSection doesn't exist")
+    let (id, _) = road.cross_sections.iter().enumerate().find(
+        |&(_id, c)| c.from == from && c.to == to && c.across == across)
+        .expect("road::math CrossSection doesn't exist");
+    CrossSectionId { id }
 }
 
 fn too_far(line: Line, bezier: &Bezier) -> bool {
@@ -103,28 +107,33 @@ impl PathProperties {
 
         let mut street_lights = Vec::new();
 
-        for (id, lane) in lane_it.enumerate() {
+        for lane in lane_it {
             let lane = find_lane(road, *lane);
-            for bezier in lane.left.iter() {
+            let lane_ref = &road.lanes[lane.id];
+
+            for bezier in lane_ref.left.iter() {
                 let bezier = road.get_bezier(*bezier);
                 left_beziers.push(bezier);
             }
-            for bezier in lane.right.iter() {
+            for bezier in lane_ref.right.iter() {
                 let bezier = road.get_bezier(*bezier);
                 right_beziers.push(bezier);
             }
-            let last_bezier = lane.right.last().unwrap();
+
+            let last_bezier = lane_ref.right.last().unwrap();
             let last_bezier = road.get_bezier(*last_bezier);
-            street_lights.push((LaneId { id }, last_bezier.c));
+            street_lights.push((lane, last_bezier.c));
         }
 
         for cs in cs_it {
             let cs = find_cross_section(road, *cs);
-            for bezier in cs.left.iter() {
+            let cs_ref = &road.cross_sections[cs.id];
+
+            for bezier in cs_ref.left.iter() {
                 let bezier = road.get_bezier(*bezier);
                 left_beziers.push(bezier);
             }
-            for bezier in cs.right.iter() {
+            for bezier in cs_ref.right.iter() {
                 let bezier = road.get_bezier(*bezier);
                 right_beziers.push(bezier);
             }
@@ -161,6 +170,37 @@ impl PathProperties {
         let nearest_right = nearest_right.unwrap_or(FAR_POINT);
         (nearest_left, nearest_right)
     }
+}
+
+pub fn nearest_street_light(
+    street_lights: &Vec<(LaneId, Point)>,
+    pos: Point,
+    dir: Point)
+    -> Option<(LaneId, Point)>
+{
+    let dir = dir.normalize();
+
+    let mut min_distance = 1000.0;
+    let mut min_lane: Option<LaneId> = None;
+    let mut min_point: Option<Point> = None;
+
+    let min_cos = f32::cos(std::f32::consts::PI * MAX_STREET_LIGHT_ANGLE / 180.0);
+
+    for light in street_lights.iter() {
+        let (lane, p) = *light;
+        let light_dir = (p - pos).normalize();
+        let distance = (pos - p).len();
+
+        if distance < min_distance && dot(dir, light_dir) >= min_cos {
+            min_distance = distance;
+            min_lane = Some(lane);
+            min_point = Some(p);
+        }
+    }
+
+    let min_lane = min_lane?;
+    let min_point = min_point?;
+    Some((min_lane, min_point))
 }
 
 impl Default for PathProperties {
