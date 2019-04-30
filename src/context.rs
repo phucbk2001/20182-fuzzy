@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::window::{WindowSystem, DragEvent};
+use crate::window::{WindowSystem, DragEvent, ClickEvent};
 use crate::camera::Camera;
 
 use crate::road::Road;
@@ -40,6 +40,11 @@ fn camera_on_drag(event: DragEvent, actions: &mut Vec<Action>) {
     actions.push(Action::Camera(action));
 }
 
+fn click(event: ClickEvent, actions: &mut Vec<Action>) {
+    let (x, y) = event.position;
+    actions.push(Action::Click(x, y));
+}
+
 impl<'a> Context<'a> {
     pub fn new(display: &'a Display) -> Self {
         let config = Config::new();
@@ -47,9 +52,11 @@ impl<'a> Context<'a> {
         let camera = Camera::new(
             (config.camera_width, config.camera_width)
         );
+
         window_system.set_on_scroll(Box::new(on_scroll));
         let window = window_system.root_window;
         window_system.set_on_drag(window, Box::new(camera_on_drag));
+        window_system.set_on_click(window, Box::new(click));
 
         let (road, car_system) = init::init(&config);
 
@@ -83,9 +90,6 @@ impl<'a> Context<'a> {
     pub fn render<T>(&mut self, target: &mut T) 
         where T: Surface
     {
-        let dims = target.get_dimensions();
-        self.camera.set_dimensions(dims, &self.config);
-
         self.road_renderer.render(
             target, &self.road, self.camera.get_matrix());
 

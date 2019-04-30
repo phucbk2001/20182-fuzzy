@@ -190,7 +190,7 @@ fn read_file(
     let f = File::open("assets/map")
         .expect("File \"assets/map\" doesn't exist");
 
-    let mut f = BufReader::new(f);
+    let f = BufReader::new(f);
 
     let mut state: ReadingState = ReadingState::Location;
 

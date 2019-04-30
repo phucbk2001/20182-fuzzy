@@ -123,6 +123,10 @@ impl WindowSystem {
         self.on_drags.set(window, Some(on_drag));
     }
 
+    pub fn set_on_click(&mut self, window: WindowId, on_click: OnClick) {
+        self.on_clicks.set(window, Some(on_click));
+    }
+
     fn get_drag_callback(&self, window: WindowId) -> Option<&OnDrag> {
         if self.em.is_alive(window) {
             if let Some(func) = self.on_drags.get(window) {
@@ -389,6 +393,7 @@ pub fn handle_event(
         MouseWheel,
         CursorMoved,
         MouseInput,
+        Resized,
     };
 
     let window = &mut context.window_system;
@@ -401,6 +406,12 @@ pub fn handle_event(
                 position.x, position.y, actions),
         MouseInput { state, button, .. } =>
             window.handle_mouse_input(state, button, actions),
+        Resized(logical_size) => {
+            context.camera.set_logical_window_size(
+                logical_size.width as f32,
+                logical_size.height as f32,
+                &context.config);
+        },
         _ => (),
     }
 }

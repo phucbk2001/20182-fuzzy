@@ -1,5 +1,5 @@
 use nalgebra as na;
-use crate::bezier;
+use crate::bezier::Point;
 use crate::config;
 
 const X2_ROOM_STEP: i32 = 8;
@@ -7,22 +7,22 @@ const MAX_ROOM_IN: i32 = 16;
 const MAX_ROOM_OUT: i32 = 32;
 
 pub struct Camera {
-    old_position: [f32; 2],
-    position: [f32; 2],
+    old_position: Point,
+    position: Point,
 
     room_scale: i32,
     room_scale_value: f32,
     
-    dimensions: (u32, u32),
+    logical_window_size: (f32, f32),
     camera_size: (f32, f32),
 
     matrix: na::Matrix4<f32>
 }
 
-fn compute_view(position: [f32; 2]) 
+fn compute_view(position: Point) 
     -> na::Isometry3<f32>
 {
-    let [x, y] = position;
+    let Point { x, y } = position;
     let eye = na::Point3::new(x, y, 10.0);
     let target = na::Point3::new(x, y, 0.0);
     let up = na::Vector3::new(0.0, 1.0, 0.0);
@@ -45,7 +45,7 @@ fn compute_projection(
 }
 
 fn projection_view_matrix(
-    position: [f32; 2], 
+    position: Point,
     camera_size: (f32, f32),
     scale: f32,
     )
@@ -58,7 +58,7 @@ fn projection_view_matrix(
 
 impl Camera {
     pub fn new(default_camera_size: (f32, f32)) -> Self {
-        let pos = [0.0, 0.0];
+        let pos = Point { x: 0.0, y: 0.0 };
 
         let matrix = projection_view_matrix(
             pos, default_camera_size, 1.0);
@@ -68,7 +68,7 @@ impl Camera {
             position: pos, 
             room_scale: 0,
             room_scale_value: 1.0,
-            dimensions: (600, 600),
+            logical_window_size: (600.0, 600.0),
             camera_size: default_camera_size,
             matrix: matrix,
         }
@@ -83,12 +83,12 @@ impl Camera {
             self.room_scale_value);
     }
 
-    pub fn set_dimensions(
-        &mut self, dims: (u32, u32), config: &config::Config) 
+    pub fn set_logical_window_size(
+        &mut self, width: f32, height: f32, config: &config::Config) 
     {
-        self.dimensions = dims;
+        self.logical_window_size = (width, height);
 
-        let (w, h) = dims;
+        let (w, h) = (width, height);
         let ratio = w as f32 / h as f32;
         let height = config.camera_width / ratio;
 
@@ -116,32 +116,34 @@ impl Camera {
     }
 
     pub fn screen_coords_to_world(
-        &self, x: f32, y: f32) -> bezier::Point
+        &self, x: f32, y: f32) -> Point
     {
-        let (w, h) = self.dimensions;
-        let w = w as f32;
-        let h = h as f32;
-
-        let x = 2.0 * x / w - 1.0;
-        let y = 1.0 - 2.0 * y / h;
+        let (w, h) = self.logical_window_size;
+        let x = (2.0 * x - w) / w;
+        let y = (h - 2.0 * y) / h;
         let (camera_width, camera_height) = self.camera_size;
         let x = x * camera_width / 2.0 * self.room_scale_value;
         let y = y * camera_height / 2.0 * self.room_scale_value;
-        bezier::Point{ x: x, y: y }
+        Point { x, y }
     }
 
-    pub fn get_old_position(&self) -> bezier::Point {
-        let [x, y] = self.old_position;
-        bezier::Point { x: x, y: y }
+    pub fn screen_coords_to_real_position(
+        &self, x: f32, y: f32) -> Point 
+    {
+        self.screen_coords_to_world(x, y) + self.position
     }
 
-    pub fn set_temp_position(&mut self, p: bezier::Point) {
-        self.position = [p.x, p.y];
+    pub fn get_old_position(&self) -> Point {
+        self.old_position
+    }
+
+    pub fn set_temp_position(&mut self, p: Point) {
+        self.position = p;
         self.update();
     }
 
-    pub fn set_position(&mut self, p: bezier::Point) {
-        self.position = [p.x, p.y];
+    pub fn set_position(&mut self, p: Point) {
+        self.position = p;
         self.old_position = self.position;
         self.update();
     }
@@ -151,7 +153,8 @@ impl Camera {
 fn view_multiply_simple_point() {
     use approx::assert_relative_eq;
 
-    let view = compute_view([0.0, 0.0]).to_homogeneous();
+    let pos = Point { x: 0.0, y: 0.0 };
+    let view = compute_view(pos).to_homogeneous();
     let p = na::Point4::new(1.0, 2.0, 0.0, 1.0);
     let q = view * p;
 

@@ -41,6 +41,10 @@ pub fn reduce(
     for action in actions {
         match *action {
             Action::Camera(action) => camera_reducer(context, action),
+            Action::Click(x, y) => {
+                let p = context.camera.screen_coords_to_real_position(x as f32, y as f32);
+                println!("Click: {} {}", p.x, p.y);
+            },
         };
     }
 }
