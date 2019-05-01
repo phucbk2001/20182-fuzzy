@@ -320,6 +320,24 @@ pub fn find_lane_contains(road: &Road, p: Point)
         .next()
 }
 
+pub fn direction_in_lane_of(road: &Road, lane: LaneId, p: Point) 
+    -> Point
+{
+    let first_left: Point = road.get_bezier(road.lanes[lane.id].left[0]).a;
+    let first_right: Point = road.get_bezier(road.lanes[lane.id].right[0]).a;
+
+    let last_left: Point = road.get_bezier(
+        *road.lanes[lane.id].left.last().unwrap()).c;
+    let last_right: Point = road.get_bezier(
+        *road.lanes[lane.id].right.last().unwrap()).c;
+
+    let dfirst = ((first_left + first_right) * 0.5 - p).len();
+    let dlast = ((last_left + last_right) * 0.5 - p).len();
+
+    let dir = (first_left - first_right) * dlast + (last_left - last_right) * dfirst;
+    dir.normalize().turn_right_90_degree()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

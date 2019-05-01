@@ -394,6 +394,7 @@ pub fn handle_event(
         CursorMoved,
         MouseInput,
         Resized,
+        ReceivedCharacter,
     };
 
     let window = &mut context.window_system;
@@ -411,6 +412,14 @@ pub fn handle_event(
                 logical_size.width as f32,
                 logical_size.height as f32,
                 &context.config);
+        },
+        ReceivedCharacter(ch) => {
+            if ch == 'a' {
+                actions.push(Action::AddCar);
+            }
+            else if ch == 27 as char {
+                actions.push(Action::Esc);
+            }
         },
         _ => (),
     }

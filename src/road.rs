@@ -10,6 +10,9 @@ use bezier::Line;
 
 use std::time::{Instant};
 
+use std::collections::BinaryHeap;
+use std::cmp::Ordering;
+
 pub use self::math::*;
 
 #[derive(Debug)]
@@ -74,6 +77,44 @@ pub struct Location {
     pub street_light_index: usize,
     pub street_light_time: f32,
     pub street_light_color: StreetLightColor,
+    pub position: Point,
+    pub adjacents: Vec<LocationId>,
+}
+
+#[derive(Copy, Clone)]
+struct TmpLocation {
+    location: LocationId,
+    distance: f32,
+}
+
+impl PartialEq for TmpLocation {
+    fn eq(&self, other: &TmpLocation) -> bool {
+        other.distance == self.distance
+    }
+}
+
+impl Eq for TmpLocation {}
+
+impl Ord for TmpLocation {
+    fn cmp(&self, other: &TmpLocation) -> Ordering {
+        if other.distance < self.distance {
+            Ordering::Less
+        }
+        else if other.distance > self.distance {
+            Ordering::Greater
+        }
+        else {
+            Ordering::Equal
+        }
+    }
+}
+
+impl PartialOrd for TmpLocation {
+    fn partial_cmp(&self, other: &TmpLocation) 
+        -> Option<Ordering> 
+    {
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -211,6 +252,30 @@ pub fn street_light_exists(road: &Road, lane: LaneId) -> bool {
     location.incoming_lanes.len() > 1
 }
 
+fn get_bezier_from_beziers(
+    beziers: &Vec<Bezier>,
+    points: &Vec<Point>,
+    b: DirectedBezier)
+    -> bezier::Bezier 
+{
+    let Bezier { point1, point2, middle } = beziers[b.bezier.id];
+
+    if b.is_forward {
+        bezier::Bezier {
+            a: points[point1.id],
+            b: middle,
+            c: points[point2.id],
+        }
+    }
+    else {
+        bezier::Bezier {
+            a: points[point2.id],
+            b: middle,
+            c: points[point1.id],
+        }
+    }
+}
+
 impl Road {
     fn get_point(&self, point_id: PointId) -> Point {
         self.points[point_id.id]
@@ -276,6 +341,70 @@ impl Road {
         else {
             Color::Red
         }
+    }
+
+    pub fn shortest_path(&self, a: LocationId, b: LocationId)
+        -> Vec<LocationId> 
+    {
+        let len = self.locations.len();
+        let mut queue = BinaryHeap::<TmpLocation>::new();
+        let mut prevs: Vec<Option<LocationId>> =
+            (0..len).into_iter().map(|_| None).collect();
+
+        let mut visited: Vec<bool> =
+            (0..len).into_iter().map(|_| false).collect();
+
+        let mut distances: Vec<f32> =
+            (0..len).into_iter().map(|_| std::f32::INFINITY).collect();
+
+        distances[a.id] = 0.0;
+        let start = TmpLocation {
+            location: LocationId { id: a.id },
+            distance: 0.0,
+        };
+        queue.push(start);
+
+        while let Some(current) = queue.pop() {
+            if current.location == b {
+                break;
+            }
+
+            let current_index = current.location.id;
+
+            if !visited[current_index] {
+                visited[current_index] = true;
+
+                for n in self.locations[current_index].adjacents.iter() {
+                    if !visited[n.id] {
+                        let dcurrent = distances[current_index];
+                        let dn = distances[n.id];
+                        let alt = dcurrent + (
+                            self.locations[n.id].position -
+                            self.locations[current_index].position).len();
+
+                        if alt < dn {
+                            distances[n.id] = alt;
+                            prevs[n.id] = Some(current.location);
+                            let loc = TmpLocation {
+                                location: *n,
+                                distance: alt,
+                            };
+                            queue.push(loc);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut result = Vec::<LocationId>::new();
+        let mut current = b;
+        result.push(current);
+        while let Some(node) = prevs[current.id] {
+            current = node;
+            result.push(current);
+        }
+        result.reverse();
+        result
     }
 }
 

@@ -198,6 +198,40 @@ impl Car {
         }
     }
 
+    pub fn from_positions(road: &Road, a: Point, b: Point) -> Option<Self> {
+        let lane1_id = road::math::find_lane_contains(road, a)?;
+        let lane2_id = road::math::find_lane_contains(road, b)?;
+
+        let lane1 = &road.lanes[lane1_id.id];
+        let lane2 = &road.lanes[lane2_id.id];
+
+        let mut path = vec![lane1.from];
+        if lane1_id.id != lane2_id.id {
+            path.append(&mut road.shortest_path(lane1.to, lane2.from));
+        }
+        path.push(lane2.to);
+        let path_names: Vec<String> =
+            path.iter()
+            .map(|location| { road.locations[location.id].name.clone() })
+            .collect();
+
+        println!("Path: {:?}", path_names);
+
+        let path_properties = road::math::PathProperties::new(road, &path);
+
+        Some(Self {
+            position: a,
+            direction: road::math::direction_in_lane_of(road, lane1_id, a),
+            velocity: MAX_VELOCITY,
+            angle: std::f32::consts::PI / 36.0,
+            is_turning_left: false,
+            car_type: CarType::Fast,
+            destination: b,
+
+            path_properties,
+        })
+    }
+
     fn do_move(&mut self, dt: f32, config: &Config) {
         let input = MoveInput {
             front_wheel: config.front_wheel,
@@ -289,11 +323,18 @@ impl Car {
     }
 }
 
+pub enum AddCar {
+    Nope,
+    Adding,
+    AddedPoint(Point),
+}
+
 pub struct CarSystem {
     prev_instant: Instant,
     pub em: ecs::EntityManager<ForCar>,
     pub cars: ecs::Components<Car, ForCar>,
     fuzzy: CarFuzzy,
+    pub add_car: AddCar,
 }
 
 impl CarSystem {
@@ -303,6 +344,7 @@ impl CarSystem {
             em: ecs::EntityManager::new(),
             cars: ecs::Components::new(),
             fuzzy: CarFuzzy::new(),
+            add_car: AddCar::Nope,
         }
     }
 

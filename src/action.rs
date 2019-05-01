@@ -2,6 +2,8 @@
 pub enum Action {
     Camera(CameraAction),
     Click(f64, f64),
+    AddCar,
+    Esc,
 }
 
 #[derive(Copy, Clone)]

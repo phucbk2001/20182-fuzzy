@@ -227,6 +227,19 @@ fn turn_back_map_fn(
     }
 }
 
+fn get_last_left_point_of(
+    lanes: &Vec<Lane>,
+    beziers: &Vec<Bezier>,
+    points: &Vec<Point>,
+    lane: LaneId)
+    -> Point
+{
+    let last_bezier = *lanes[lane.id].left.last().unwrap();
+    let bezier = get_bezier_from_beziers(
+        beziers, points, last_bezier);
+    bezier.c
+}
+
 impl Road {
     pub fn from(backbone: &Backbone, config: &Config) -> Self {
         let mut locations = backbone.locations.clone();
@@ -397,6 +410,25 @@ impl Road {
             locations[location.id].incoming_lanes.push(id);
         }
 
+        for location in locations.iter_mut() {
+            location.position =
+                location.incoming_lanes.iter()
+                .fold(Point { x: 0.0, y: 0.0 }, |point, lane| {
+                    point + get_last_left_point_of(
+                        &lanes, &beziers, &points, *lane)
+                });
+            location.position = location.position *
+                (1.0 / location.incoming_lanes.len() as f32);
+        }
+
+        for location in locations.iter_mut() {
+            location.adjacents = location.incoming_lanes.iter()
+                .map(|&lane| {
+                    lanes[lane.id].from
+                })
+                .collect();
+        }
+
         Self {
             locations,
             points,
@@ -451,6 +483,8 @@ impl Backbone {
             street_light_index: 0,
             street_light_color: StreetLightColor::Green,
             street_light_time: random_green_time(config),
+            position: Point { x: 0.0, y: 0.0 },
+            adjacents: Vec::new(),
         });
         LocationId { id: len }
     }

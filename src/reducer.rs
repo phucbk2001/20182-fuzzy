@@ -3,7 +3,7 @@ use crate::action::{
     Action, 
     CameraAction,
 };
-use crate::road;
+use crate::car::Car;
 
 fn camera_reducer(
     context: &mut Context, 
@@ -39,19 +39,36 @@ pub fn reduce(
     context: &mut Context, 
     actions: &Vec<Action>)
 {
+    use crate::car::AddCar::*;
+
     for action in actions {
         match *action {
             Action::Camera(action) => camera_reducer(context, action),
             Action::Click(x, y) => {
                 let p = context.camera.screen_coords_to_real_position(x as f32, y as f32);
-                if let Some(lane) = road::math::find_lane_contains(&context.road, p) {
-                    let from = context.road.lanes[lane.id].from;
-                    let to = context.road.lanes[lane.id].to;
-                    let name1 = &context.road.locations[from.id].name;
-                    let name2 = &context.road.locations[to.id].name;
-                    println!("Click: {} {}", name1, name2);
-                }
+                context.car_system.add_car =
+                    match context.car_system.add_car {
+                        Nope => Nope,
+                        Adding => AddedPoint(p),
+                        AddedPoint(prev_pos) => {
+                            if let Some(car) = Car::from_positions(
+                                &context.road, prev_pos, p)
+                            {
+                                context.car_system.add(car);
+                            }
+                            else {
+                                println!("Error while chosing points to add a car");
+                            }
+                            Nope
+                        },
+                    };
             },
+            Action::Esc => {
+                context.car_system.add_car = Nope;
+            },
+            Action::AddCar => {
+                context.car_system.add_car = Adding;
+            }
         };
     }
 }
