@@ -80,21 +80,45 @@ fn too_far(line: Line, bezier: &Bezier) -> bool {
 fn new_nearest(
     reference_point: Point, 
     nearest: Option<Point>, 
-    candidate: Point) 
+    candidate: Option<Point>) 
     -> Option<Point>
 {
     if let Some(p) = nearest {
-        if (p - reference_point).len() > (candidate - reference_point).len() {
-            Some(candidate)
+        if let Some(new_point) = candidate {
+            let prev_len = (p - reference_point).len();
+            let len = (new_point - reference_point).len();
+            if prev_len > len {
+                candidate
+            }
+            else {
+                nearest
+            }
         }
         else {
             nearest
         }
     }
     else {
-        Some(candidate)
+        candidate
     }
 }
+
+fn intersect_line_beziers(
+    line: Line, beziers: &Vec<Bezier>) 
+    -> Option<Point>
+{
+    let not_too_far = |bezier: &&Bezier| { !too_far(line, *bezier) };
+    let fold_fn =
+        |nearest: Option<Point>, bezier: &Bezier| {
+            let p = bezier::intersect_line_bezier(line, *bezier);
+            new_nearest(line.position, nearest, p)
+        };
+
+    beziers.iter()
+        .filter(not_too_far)
+        .fold(None, fold_fn)
+}
+
 
 impl PathProperties {
     pub fn new(road: &Road, path: &[LocationId]) -> Self
@@ -152,24 +176,11 @@ impl PathProperties {
     }
 
     pub fn nearest_intersection(&self, line: Line) -> (Point, Point) {
-        let candidate_left_it = self.left_beziers.iter()
-            .filter(|&bezier| !too_far(line, bezier));
-        let candidate_right_it = self.right_beziers.iter()
-            .filter(|&bezier| !too_far(line, bezier));
+        let nearest_left = intersect_line_beziers(
+            line, &self.left_beziers);
 
-        let mut nearest_left = None;
-        for bezier in candidate_left_it {
-            if let Some(p) = bezier::intersect_line_bezier(line, *bezier) {
-                nearest_left = new_nearest(line.position, nearest_left, p);
-            }
-        }
-
-        let mut nearest_right = None;
-        for bezier in candidate_right_it {
-            if let Some(p) = bezier::intersect_line_bezier(line, *bezier) {
-                nearest_right = new_nearest(line.position, nearest_right, p);
-            }
-        }
+        let nearest_right = intersect_line_beziers(
+            line, &self.right_beziers);
 
         let nearest_left = nearest_left.unwrap_or(FAR_POINT);
         let nearest_right = nearest_right.unwrap_or(FAR_POINT);
@@ -216,6 +227,97 @@ impl Default for PathProperties {
             street_lights: Vec::new(),
         }
     }
+}
+
+fn add_straight_bezier(a: Point, c: Point, beziers: &mut Vec<Bezier>) {
+    let middle = (a + c) * 0.5;
+    let bezier = Bezier { a, b: middle, c };
+    beziers.push(bezier);
+}
+
+fn enclosed_left_right_beziers(road: &Road, lane: LaneId)
+    -> (Vec<Bezier>, Vec<Bezier>)
+{
+    let mut left_beziers: Vec<Bezier> =
+        road.lanes[lane.id].left.iter()
+        .map(|&bezier| {
+            road.get_bezier(bezier)
+        })
+        .collect();
+
+    let mut right_beziers: Vec<Bezier> =
+        road.lanes[lane.id].right.iter()
+        .map(|&bezier| {
+            road.get_bezier(bezier)
+        })
+        .collect();
+
+    let first_left = *left_beziers.iter().next().unwrap();
+    let first_right = *right_beziers.iter().next().unwrap();
+    let last_left = *left_beziers.last().unwrap();
+    let last_right = *right_beziers.last().unwrap();
+
+    add_straight_bezier(
+        first_left.a,
+        first_right.a,
+        &mut right_beziers);
+
+    add_straight_bezier(
+        last_left.c,
+        last_right.c,
+        &mut left_beziers);
+
+    (left_beziers, right_beziers)
+}
+
+fn is_middle_of(
+    reference: Point,
+    left: Option<Point>,
+    right: Option<Point>)
+    -> bool 
+{
+    if let Some(p1) = left {
+        if let Some(p2) = right {
+            let v1 = p1 - reference;
+            let v2 = p2 - reference;
+            bezier::dot(v1, v2) < 0.0
+        }
+        else {
+            false
+        }
+    }
+    else {
+        false
+    }
+}
+
+fn is_inside_lane(road: &Road, pos: Point, lane: LaneId) -> bool {
+    let (left_beziers, right_beziers) =
+        enclosed_left_right_beziers(road, lane);
+    let line1 = Line {
+        position: pos,
+        direction: Point { x: 1.0, y: 0.0 },
+    };
+    let line2 = Line {
+        position: pos,
+        direction: Point { x: 0.0, y: 1.0 },
+    };
+
+    let left1 = intersect_line_beziers(line1, &left_beziers);
+    let right1 = intersect_line_beziers(line1, &right_beziers);
+    let left2 = intersect_line_beziers(line2, &left_beziers);
+    let right2 = intersect_line_beziers(line2, &right_beziers);
+
+    is_middle_of(pos, left1, right1) || is_middle_of(pos, left2, right2)
+}
+
+pub fn find_lane_contains(road: &Road, p: Point)
+    -> Option<LaneId>
+{
+    (0..(road.lanes.len())).into_iter()
+        .map(|id| { LaneId { id } })
+        .filter(|&lane| is_inside_lane(road, p, lane))
+        .next()
 }
 
 #[cfg(test)]

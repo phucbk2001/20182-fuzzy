@@ -3,6 +3,7 @@ use crate::action::{
     Action, 
     CameraAction,
 };
+use crate::road;
 
 fn camera_reducer(
     context: &mut Context, 
@@ -43,7 +44,13 @@ pub fn reduce(
             Action::Camera(action) => camera_reducer(context, action),
             Action::Click(x, y) => {
                 let p = context.camera.screen_coords_to_real_position(x as f32, y as f32);
-                println!("Click: {} {}", p.x, p.y);
+                if let Some(lane) = road::math::find_lane_contains(&context.road, p) {
+                    let from = context.road.lanes[lane.id].from;
+                    let to = context.road.lanes[lane.id].to;
+                    let name1 = &context.road.locations[from.id].name;
+                    let name2 = &context.road.locations[to.id].name;
+                    println!("Click: {} {}", name1, name2);
+                }
             },
         };
     }
