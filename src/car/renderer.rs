@@ -4,6 +4,7 @@ use crate::bezier;
 use crate::config::Config;
 use crate::glhelper;
 use crate::car::CarSystem;
+use crate::car::CarType;
 
 use image;
 
@@ -90,8 +91,14 @@ impl CarRenderer {
             &indices,
         ).unwrap();
 
-        let texture = glhelper::load_texture(
+        let texture_car_normal = glhelper::load_texture(
             "assets/car1.png",
+            image::ImageFormat::PNG,
+            display
+        );
+
+        let texture_car_slow = glhelper::load_texture(
+            "assets/car2.png",
             image::ImageFormat::PNG,
             display
         );
@@ -99,8 +106,15 @@ impl CarRenderer {
         Self {
             vertex_buffers: vec![vertex_buffer],
             index_buffers: vec![index_buffer],
-            textures: vec![texture],
+            textures: vec![texture_car_normal, texture_car_slow],
             program,
+        }
+    }
+
+    fn get_texture(&self, car_type: CarType) -> &Texture2d {
+        match car_type {
+            CarType::Normal => &self.textures[0],
+            CarType::Slow => &self.textures[1],
         }
     }
 
@@ -137,7 +151,7 @@ impl CarRenderer {
 
                 let uniform = uniform! {
                     matrix: *matrix_ref,
-                    tex: &self.textures[0],
+                    tex: self.get_texture(car.car_type),
                 };
 
                 target.draw(

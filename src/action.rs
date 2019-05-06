@@ -3,6 +3,7 @@ pub enum Action {
     Camera(CameraAction),
     Click(f64, f64),
     AddCar,
+    AddCarSlow,
     Esc,
 }
 

@@ -14,17 +14,15 @@ use road::{Road, LocationId, LaneId};
 use std::time::{Instant};
 
 #[allow(dead_code)]
-const DESTINATION_EFFECTIVE_RANGE: f32 = 0.8;
-const MAX_VELOCITY: f32 = 10.0;
+const DESTINATION_EFFECTIVE_RANGE: f32 = 1.2;
 
 #[derive(Copy, Clone)]
 pub struct ForCar {}
 
 #[derive(Copy, Clone)]
 pub enum CarType {
-    #[allow(dead_code)]
     Slow, 
-    Fast,
+    Normal,
 }
 
 #[derive(Clone)]
@@ -41,15 +39,24 @@ pub struct Car {
     pub path_properties: road::PathProperties,
 }
 
+fn default_velocity_for(car_type: CarType) -> f32 {
+    use CarType::*;
+
+    match car_type {
+        Normal => 10.0,
+        Slow => 3.0,
+    }
+}
+
 impl Default for Car {
     fn default() -> Car {
         Car {
             position: Point { x: 0.0, y: 0.0 },
             direction: Point { x: 1.0, y: 0.0 },
-            velocity: MAX_VELOCITY,
+            velocity: default_velocity_for(CarType::Normal),
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
-            car_type: CarType::Fast,
+            car_type: CarType::Normal,
             destination: Point { x: 100.0, y: 100.0 },
 
             path_properties: road::PathProperties::default(),
@@ -188,17 +195,19 @@ impl Car {
         Self {
             position: pos,
             direction: dir,
-            velocity: MAX_VELOCITY,
+            velocity: default_velocity_for(CarType::Normal),
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
-            car_type: CarType::Fast,
+            car_type: CarType::Normal,
             destination: dest,
 
             path_properties,
         }
     }
 
-    pub fn from_positions(road: &Road, a: Point, b: Point) -> Option<Self> {
+    pub fn from_positions(road: &Road, a: Point, b: Point, car_type: CarType) 
+        -> Option<Self>
+    {
         let lane1_id = road::math::find_lane_contains(road, a)?;
         let lane2_id = road::math::find_lane_contains(road, b)?;
 
@@ -222,10 +231,10 @@ impl Car {
         Some(Self {
             position: a,
             direction: road::math::direction_in_lane_of(road, lane1_id, a),
-            velocity: MAX_VELOCITY,
+            velocity: default_velocity_for(car_type),
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
-            car_type: CarType::Fast,
+            car_type: car_type,
             destination: b,
 
             path_properties,
@@ -308,7 +317,7 @@ impl Car {
                 1.0
             };
 
-        let v = MAX_VELOCITY * output;
+        let v = default_velocity_for(self.car_type) * output;
         self.velocity = if v < 0.2 { 0.0 } else { v };
     }
 
@@ -335,6 +344,7 @@ pub struct CarSystem {
     pub cars: ecs::Components<Car, ForCar>,
     fuzzy: CarFuzzy,
     pub add_car: AddCar,
+    pub add_car_type: CarType,
 }
 
 impl CarSystem {
@@ -345,6 +355,7 @@ impl CarSystem {
             cars: ecs::Components::new(),
             fuzzy: CarFuzzy::new(),
             add_car: AddCar::Nope,
+            add_car_type: CarType::Normal,
         }
     }
 

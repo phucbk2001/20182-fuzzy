@@ -417,6 +417,9 @@ pub fn handle_event(
             if ch == 'a' {
                 actions.push(Action::AddCar);
             }
+            else if ch == 's' {
+                actions.push(Action::AddCarSlow);
+            }
             else if ch == 27 as char {
                 actions.push(Action::Esc);
             }
