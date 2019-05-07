@@ -13,8 +13,9 @@ use road::{Road, LocationId, LaneId};
 
 use std::time::{Instant};
 
-#[allow(dead_code)]
 const DESTINATION_EFFECTIVE_RANGE: f32 = 1.2;
+const NEAREST_CAR_POSITION_ANGLE: f32 = 45.0;
+const NEAREST_CAR_DIRECTION_ANGLE: f32 = 45.0;
 
 #[derive(Copy, Clone)]
 pub struct ForCar {}
@@ -37,6 +38,12 @@ pub struct Car {
     pub destination: Point,
 
     pub path_properties: road::PathProperties,
+}
+
+#[derive(Copy, Clone)]
+pub struct NearestCar {
+    position: Point,
+    direction: Point,
 }
 
 fn default_velocity_for(car_type: CarType) -> f32 {
@@ -283,7 +290,19 @@ impl Car {
         else {
             fuzzy.fuzzy.set_input(fuzzy.distance.input, 1000.0);
             fuzzy.fuzzy.set_input(fuzzy.light_status.input, 1.0);
-            // println!("{:?} {:?}", Instant::now(), self.position);
+        }
+    }
+
+    fn fuzzy_set_car_distance(
+        &self, fuzzy: &mut CarFuzzy,
+        nearest_car: Option<NearestCar>)
+    {
+        if let Some(nearest_car) = nearest_car {
+            let distance = (nearest_car.position - self.position).len();
+            fuzzy.fuzzy.set_input(fuzzy.car_distance.input, distance);
+        }
+        else {
+            fuzzy.fuzzy.set_input(fuzzy.car_distance.input, 200.0);
         }
     }
 
@@ -321,9 +340,14 @@ impl Car {
         self.velocity = if v < 0.2 { 0.0 } else { v };
     }
 
-    fn do_fuzzy(&mut self, fuzzy: &mut CarFuzzy, road: &Road, config: &Config) {
+    fn do_fuzzy(
+        &mut self, fuzzy: &mut CarFuzzy,
+        road: &Road, config: &Config,
+        nearest_car: Option<NearestCar>)
+    {
         self.fuzzy_set_deviation(fuzzy, config);
         self.fuzzy_set_light_status_distance(fuzzy, road);
+        self.fuzzy_set_car_distance(fuzzy, nearest_car);
 
         fuzzy.fuzzy.evaluate(fuzzy.simple_rule_set);
 
@@ -342,9 +366,47 @@ pub struct CarSystem {
     prev_instant: Instant,
     pub em: ecs::EntityManager<ForCar>,
     pub cars: ecs::Components<Car, ForCar>,
+    nearest_cars: ecs::Components<Option<NearestCar>, ForCar>,
     fuzzy: CarFuzzy,
     pub add_car: AddCar,
     pub add_car_type: CarType,
+}
+
+fn find_nearest_car(
+    em: &ecs::EntityManager<ForCar>,
+    cars: &ecs::Components<Car, ForCar>,
+    pos: Point, dir: Point)
+    -> Option<ecs::Entity<ForCar>>
+{
+    let dir = dir.normalize();
+    let mut result = None;
+    for (e, car) in cars.iter() {
+        if em.is_alive(*e) {
+            let phi_pos = NEAREST_CAR_POSITION_ANGLE * std::f32::consts::PI / 180.0;
+            let phi_dir = NEAREST_CAR_DIRECTION_ANGLE * std::f32::consts::PI / 180.0;
+
+            let cos_pos = bezier::dot((car.position - pos).normalize(), dir);
+            let cos_dir = bezier::dot(car.direction.normalize(), dir);
+
+            if cos_pos >= f32::cos(phi_pos) && cos_dir >= f32::cos(phi_dir) {
+                result =
+                    if let Some(old_entity) = result {
+                        let new_pos = car.position;
+                        let old_pos = cars.get(old_entity).position;
+                        if (new_pos - pos).len() < (old_pos - pos).len() {
+                            Some(*e)
+                        }
+                        else {
+                            result
+                        }
+                    }
+                    else {
+                        Some(*e)
+                    }
+            }
+        }
+    }
+    result
 }
 
 impl CarSystem {
@@ -353,6 +415,7 @@ impl CarSystem {
             prev_instant: Instant::now(),
             em: ecs::EntityManager::new(),
             cars: ecs::Components::new(),
+            nearest_cars: ecs::Components::new(),
             fuzzy: CarFuzzy::new(),
             add_car: AddCar::Nope,
             add_car_type: CarType::Normal,
@@ -360,7 +423,9 @@ impl CarSystem {
     }
 
     pub fn add(&mut self, car: Car) {
-        self.cars.add(&mut self.em, car);
+        let e = self.em.allocate();
+        self.cars.set(e, car);
+        self.nearest_cars.set(e, None);
     }
 
     pub fn update(&mut self, road: &Road, config: &Config) {
@@ -369,11 +434,32 @@ impl CarSystem {
         let dt: f32 = delta.subsec_micros() as f32 / 1_000_000.0;
         self.prev_instant = current;
 
+        for (e, nearest_car) in self.nearest_cars.iter_mut() {
+            if self.em.is_alive(*e) {
+                let pos = self.cars.get(*e).position;
+                let dir = self.cars.get(*e).direction;
+                let maybe_found_entity = find_nearest_car(&self.em, &self.cars, pos, dir);
+
+                if let Some(found_entity) = maybe_found_entity {
+                    let position = self.cars.get(found_entity).position;
+                    let direction = self.cars.get(found_entity).direction;
+
+                    *nearest_car = Some(NearestCar {
+                        position,
+                        direction,
+                    });
+                }
+                else {
+                    *nearest_car = None;
+                }
+            }
+        }
+
         for (e, car) in self.cars.iter_mut() {
             if self.em.is_alive(*e) { 
                 car.do_move(dt, config);
-
-                car.do_fuzzy(&mut self.fuzzy, road, config);
+                let nearest_car = *self.nearest_cars.get(*e);
+                car.do_fuzzy(&mut self.fuzzy, road, config, nearest_car);
 
                 if (car.destination - car.position).len() < DESTINATION_EFFECTIVE_RANGE {
                     self.em.deallocate(*e);

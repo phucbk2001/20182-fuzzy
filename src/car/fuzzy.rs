@@ -3,6 +3,7 @@ mod steering;
 mod distance;
 mod speed;
 mod light_status;
+mod car_distance;
 
 use crate::fuzzy::*;
 
@@ -29,6 +30,13 @@ pub struct LightStatus {
     yellow: InputSetId,
     less_red: InputSetId,
     red: InputSetId,
+}
+
+pub struct CarDistance {
+    pub input: InputId,
+    near: InputSetId,
+    medium: InputSetId,
+    far: InputSetId,
 }
 
 // Output Fuzzy Sets
@@ -58,6 +66,7 @@ pub struct CarFuzzy {
     pub distance: Distance,
     pub speed: Speed,
     pub light_status: LightStatus,
+    pub car_distance: CarDistance,
 
     pub simple_rule_set: RuleSetId,
 }
@@ -72,6 +81,7 @@ impl CarFuzzy {
         let distance = Distance::new(&mut fuzzy);
         let speed = Speed::new(&mut fuzzy);
         let light_status = LightStatus::new(&mut fuzzy);
+        let car_distance = CarDistance::new(&mut fuzzy);
 
         let rule1 = fuzzy.add_rule(&[deviation.far_left], steering.hard_right);
         let rule2 = fuzzy.add_rule(&[deviation.left], steering.right);
@@ -126,6 +136,13 @@ impl CarFuzzy {
         let rule42 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.far_right], speed.slower);
         let rule43 = fuzzy.add_rule(&[light_status.less_red, distance.near, deviation.far_right], speed.stop);
 
+        let rule44 = fuzzy.add_rule(&[car_distance.near], speed.stop);
+        let rule45 = fuzzy.add_rule(&[car_distance.medium, deviation.far_left], speed.slower);
+        let rule46 = fuzzy.add_rule(&[car_distance.medium, deviation.far_right], speed.slower);
+        let rule47 = fuzzy.add_rule(&[car_distance.medium, deviation.left], speed.slow);
+        let rule48 = fuzzy.add_rule(&[car_distance.medium, deviation.right], speed.slow);
+        let rule49 = fuzzy.add_rule(&[car_distance.medium, deviation.middle], speed.medium);
+
         let simple_rule_set = fuzzy.add_rule_set(
             &[
                 rule1, rule2, rule3, rule4, rule5,
@@ -136,6 +153,7 @@ impl CarFuzzy {
                 rule27, rule28, rule29, rule30, rule31, rule32,
                 rule33, rule34, rule35, rule36, rule37,
                 rule38, rule39, rule40, rule41, rule42, rule43,
+                rule44, rule45, rule46, rule47, rule48, rule49,
             ]);
 
         Self {
@@ -146,6 +164,7 @@ impl CarFuzzy {
             distance,
             speed,
             light_status,
+            car_distance,
 
             simple_rule_set,
         }

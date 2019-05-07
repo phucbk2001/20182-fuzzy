@@ -97,9 +97,9 @@ impl<T, P> Components<T, P> where T: Default, P: Copy {
     }
 
     fn resize(&mut self, new_len: usize) {
-        let len = self.entities.len();
-        if len < new_len {
-            for _ in 0..(new_len - len) {
+        let old_len = self.entities.len();
+        if old_len < new_len {
+            for _ in 0..(new_len - old_len) {
                 self.entities.push(Entity::<P>::new_empty());
                 self.values.push(Default::default());
             }
@@ -114,19 +114,16 @@ impl<T, P> Components<T, P> where T: Default, P: Copy {
     }
 
     #[allow(dead_code)]
-    pub fn add(&mut self, em: &mut EntityManager<P>, v: T) -> Entity<P> {
-        let e = em.allocate();
-        self.set(e, v);
-        e
-    }
-
-    #[allow(dead_code)]
     pub fn get(&self, e: Entity<P>) -> &T {
+        debug_assert!(e.index < self.values.len(),
+        "ECS get: Index should not be bigger than Values len");
         &self.values[e.index]
     }
 
     #[allow(dead_code)]
     pub fn get_mut(&mut self, e: Entity<P>) -> &mut T {
+        debug_assert!(e.index < self.values.len(),
+        "ECS get_mut: Index should not be bigger than Values len");
         &mut self.values[e.index]
     }
 
