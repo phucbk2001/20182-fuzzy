@@ -13,6 +13,7 @@ const MAX_STREET_LIGHT_ANGLE: f32 = 60.0;
 pub struct PathProperties {
     pub left_beziers: Vec<Bezier>,
     pub right_beziers: Vec<Bezier>,
+    pub far_left_beziers: Vec<Bezier>,
     pub street_lights: Vec<(LaneId, Point)>,
     pub path: Vec<LocationId>,
 }
@@ -127,15 +128,17 @@ impl PathProperties {
         let lanes = path_to_lanes(path);
         let cross_sections = path_to_cross_sections(path);
 
-        let lane_it = lanes.iter();
-        let cs_it = cross_sections.iter();
+        let mut reverse_path = path.to_vec(); reverse_path.reverse();
+        let left_lanes = path_to_lanes(&reverse_path);
+        let left_cross_sections = path_to_cross_sections(&reverse_path);
 
         let mut left_beziers = Vec::new();
         let mut right_beziers = Vec::new();
+        let mut far_left_beziers = Vec::new();
 
         let mut street_lights = Vec::new();
 
-        for lane in lane_it {
+        for lane in lanes.iter() {
             let lane = find_lane(road, *lane);
             let lane_ref = &road.lanes[lane.id];
 
@@ -155,7 +158,7 @@ impl PathProperties {
             }
         }
 
-        for cs in cs_it {
+        for cs in cross_sections.iter() {
             let cs = find_cross_section(road, *cs);
             let cs_ref = &road.cross_sections[cs.id];
 
@@ -169,24 +172,52 @@ impl PathProperties {
             }
         }
 
+        for lane in left_lanes.iter() {
+            let lane = find_lane(road, *lane);
+            let lane_ref = &road.lanes[lane.id];
+
+            for bezier in lane_ref.right.iter() {
+                let bezier = road.get_bezier(*bezier);
+                far_left_beziers.push(bezier);
+            }
+        }
+
+        for cs in left_cross_sections.iter() {
+            let cs = find_cross_section(road, *cs);
+            let cs_ref = &road.cross_sections[cs.id];
+
+            for bezier in cs_ref.right.iter() {
+                let bezier = road.get_bezier(*bezier);
+                far_left_beziers.push(bezier);
+            }
+        }
+
         Self {
             left_beziers,
             right_beziers,
+            far_left_beziers,
             street_lights,
             path: path.to_vec(),
         }
     }
 
-    pub fn nearest_intersection(&self, line: Line) -> (Point, Point) {
+    pub fn nearest_intersection(&self, line: Line)
+        -> (Point, Point, Point)
+    {
         let nearest_left = intersect_line_beziers(
             line, &self.left_beziers);
 
         let nearest_right = intersect_line_beziers(
             line, &self.right_beziers);
 
+        let nearest_far_left = intersect_line_beziers(
+            line, &self.far_left_beziers);
+
         let nearest_left = nearest_left.unwrap_or(FAR_POINT);
         let nearest_right = nearest_right.unwrap_or(FAR_POINT);
-        (nearest_left, nearest_right)
+        let nearest_far_left = nearest_far_left.unwrap_or(FAR_POINT);
+
+        (nearest_left, nearest_right, nearest_far_left)
     }
 }
 
@@ -226,6 +257,7 @@ impl Default for PathProperties {
         Self {
             left_beziers: Vec::new(),
             right_beziers: Vec::new(),
+            far_left_beziers: Vec::new(),
             street_lights: Vec::new(),
             path: Vec::new(),
         }

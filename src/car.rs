@@ -276,7 +276,7 @@ impl Car {
             position: pos,
             direction: self.direction.turn_right_90_degree(),
         };
-        let (left, right) = self.path_properties
+        let (left, right, _far_left) = self.path_properties
             .nearest_intersection(line);
         let dx = (left - pos).len() - config.car_width / 2.0;
         let dy = (right - pos).len() - config.car_width / 2.0;

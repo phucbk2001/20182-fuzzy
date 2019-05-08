@@ -221,8 +221,10 @@ mod tests {
         assert_relative_eq!(fuzzy.input_sets[is3.id].membership, 0.75);
         assert_relative_eq!(fuzzy.input_sets[is4.id].membership, 0.0);
 
-        assert_relative_eq!(fuzzy.output_sets[os1.id].input_membership, 0.25);
-        assert_relative_eq!(fuzzy.output_sets[os2.id].input_membership, 0.0);
+        assert_relative_eq!(
+            fuzzy.output_sets[os1.id].input_membership.unwrap(), 0.25);
+        assert_relative_eq!(
+            fuzzy.output_sets[os2.id].input_membership.unwrap(), 0.0);
     
         assert_relative_eq!(
             output_fuzzy_function(

@@ -206,9 +206,15 @@ mod tests {
     fn test_component_iter() {
         let mut components = Components::<usize, TestComp>::new();
         let mut em = EntityManager::<TestComp>::new();
-        components.add(&mut em, 11);
-        components.add(&mut em, 22);
-        components.add(&mut em, 33);
+
+        let e = em.allocate();
+        components.set(e, 11);
+
+        let e = em.allocate();
+        components.set(e, 22);
+
+        let e = em.allocate();
+        components.set(e, 33);
 
         let mut it = components.iter();
 
