@@ -14,8 +14,8 @@ use road::{Road, LocationId, LaneId};
 use std::time::{Instant};
 
 const DESTINATION_EFFECTIVE_RANGE: f32 = 1.2;
-const NEAREST_CAR_POSITION_ANGLE: f32 = 45.0;
-const NEAREST_CAR_DIRECTION_ANGLE: f32 = 45.0;
+const NEAREST_CAR_POSITION_ANGLE: f32 = 60.0;
+const NEAREST_CAR_DIRECTION_ANGLE: f32 = 90.0;
 
 #[derive(Copy, Clone)]
 pub struct ForCar {}
@@ -35,6 +35,7 @@ pub struct Car {
     pub is_turning_left: bool,
 
     pub car_type: CarType,
+    pub starting: Point,
     pub destination: Point,
 
     pub path_properties: road::PathProperties,
@@ -64,6 +65,7 @@ impl Default for Car {
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
             car_type: CarType::Normal,
+            starting: Point { x: 0.0, y: 0.0 },
             destination: Point { x: 100.0, y: 100.0 },
 
             path_properties: road::PathProperties::default(),
@@ -206,6 +208,7 @@ impl Car {
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
             car_type: CarType::Normal,
+            starting: pos,
             destination: dest,
 
             path_properties,
@@ -242,6 +245,7 @@ impl Car {
             angle: std::f32::consts::PI / 36.0,
             is_turning_left: false,
             car_type: car_type,
+            starting: a,
             destination: b,
 
             path_properties,
@@ -370,6 +374,8 @@ pub struct CarSystem {
     fuzzy: CarFuzzy,
     pub add_car: AddCar,
     pub add_car_type: CarType,
+    pub chosen_car: Option<ecs::Entity<ForCar>>,
+    old_chosen_car: Option<ecs::Entity<ForCar>>,
 }
 
 fn find_nearest_car(
@@ -419,11 +425,14 @@ impl CarSystem {
             fuzzy: CarFuzzy::new(),
             add_car: AddCar::Nope,
             add_car_type: CarType::Normal,
+            chosen_car: None,
+            old_chosen_car: None,
         }
     }
 
     pub fn add(&mut self, car: Car) {
         let e = self.em.allocate();
+        self.chosen_car = Some(e);
         self.cars.set(e, car);
         self.nearest_cars.set(e, None);
     }
@@ -466,5 +475,26 @@ impl CarSystem {
                 }
             }
         }
+    }
+
+    pub fn chosen_car_changed(&self) -> bool {
+        match self.old_chosen_car {
+            None => {
+                match self.chosen_car {
+                    None => false,
+                    Some(_) => true,
+                }
+            },
+            Some(e1) => {
+                match self.chosen_car {
+                    None => true,
+                    Some(e2) => e1 != e2,
+                }
+            },
+        }
+    }
+
+    pub fn finish(&mut self) {
+        self.old_chosen_car = self.chosen_car;
     }
 }

@@ -63,7 +63,7 @@ fn output_fuzzy_function(
     let mut max = 0.0;
     for output_set in output.cached_output_sets.iter() {
         let output_set_result = f32::min(
-            output_sets[output_set.id].input_membership,
+            output_sets[output_set.id].input_membership.unwrap_or(0.0),
             (output_sets[output_set.id].f)(x)
         );
         max = f32::max(max, output_set_result);
@@ -131,7 +131,7 @@ impl Fuzzy {
 
         for rule in active_rules.iter() {
             let output_set = rules[rule.id].output_set;
-            output_sets[output_set.id].input_membership = 0.0;
+            output_sets[output_set.id].input_membership = None;
         }
 
         for rule in active_rules.iter() {

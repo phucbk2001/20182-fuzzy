@@ -9,6 +9,8 @@ pub struct Config {
     pub streetlight_distance: f32,
     pub min_green_duration: f32,
     pub max_green_duration: f32,
+    pub location_mark_width: f32,
+    pub location_mark_height: f32,
 }
 
 impl Config {
@@ -24,6 +26,8 @@ impl Config {
             streetlight_distance: 2.0,
             min_green_duration: 6.0,
             max_green_duration: 10.0,
+            location_mark_width: 2.5,
+            location_mark_height: 4.0,
         }
     }
 }

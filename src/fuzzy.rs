@@ -44,7 +44,7 @@ pub struct InputSet {
 pub struct OutputSet {
     output: OutputId,
     f: MembershipFunction,
-    input_membership: f32,
+    input_membership: Option<f32>,
 }
 
 pub struct Rule {
@@ -67,8 +67,10 @@ pub struct Fuzzy {
 
 impl OutputSet {
     fn set_input_membership(&mut self, membership: f32) {
-        self.input_membership = f32::max(
-            membership, self.input_membership);
+        self.input_membership = match self.input_membership {
+            None => Some(membership),
+            Some(value) => Some(f32::max(membership, value)),
+        };
     }
 }
 
@@ -147,7 +149,7 @@ impl Fuzzy {
         let output_set = OutputSet {
             output,
             f, 
-            input_membership: 0.0,
+            input_membership: None,
         };
         let id = self.output_sets.len();
         self.output_sets.push(output_set);

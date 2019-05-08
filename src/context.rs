@@ -80,11 +80,23 @@ impl<'a> Context<'a> {
     pub fn update(&mut self, display: &Display) {
         self.road.update_street_lights(&self.config);
         self.car_system.update(&self.road, &self.config);
+
+        if self.car_system.chosen_car_changed() {
+            if let Some(e) = self.car_system.chosen_car {
+                if self.car_system.em.is_alive(e) {
+                    self.road.chosen_path =
+                        self.car_system.cars
+                        .get(e).path_properties.path.clone();
+                }
+            }
+        }
+
         self.road_renderer.update(display, &self.road);
     }
 
     pub fn finish(&mut self) {
         self.road.finish();
+        self.car_system.finish();
     }
 
     pub fn render<T>(&mut self, target: &mut T) 

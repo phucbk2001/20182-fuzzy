@@ -37,6 +37,7 @@ pub struct CarDistance {
     near: InputSetId,
     medium: InputSetId,
     far: InputSetId,
+    medium_far: InputSetId,
 }
 
 // Output Fuzzy Sets
@@ -89,71 +90,78 @@ impl CarFuzzy {
         let rule4 = fuzzy.add_rule(&[deviation.right], steering.left);
         let rule5 = fuzzy.add_rule(&[deviation.far_right], steering.hard_left);
 
-        let rule6 = fuzzy.add_rule(&[light_status.green, deviation.middle], speed.medium);
-        let rule7 = fuzzy.add_rule(&[light_status.green, deviation.left], speed.slow);
-        let rule8 = fuzzy.add_rule(&[light_status.green, deviation.right], speed.slow);
-        let rule9 = fuzzy.add_rule(&[light_status.green, deviation.far_left], speed.slower);
-        let rule10 = fuzzy.add_rule(&[light_status.green, deviation.far_right], speed.slower);
+        let rule6 = fuzzy.add_rule(&[light_status.green, deviation.middle, car_distance.far], speed.medium);
+        let rule7 = fuzzy.add_rule(&[light_status.green, deviation.left, car_distance.far], speed.slow);
+        let rule7b = fuzzy.add_rule(&[light_status.green, deviation.left, car_distance.medium], speed.slower);
+        let rule8 = fuzzy.add_rule(&[light_status.green, deviation.right, car_distance.far], speed.slow);
+        let rule8b = fuzzy.add_rule(&[light_status.green, deviation.right, car_distance.medium], speed.slower);
+        let rule9 = fuzzy.add_rule(&[light_status.green, deviation.far_left, car_distance.far], speed.slower);
+        let rule9b = fuzzy.add_rule(&[light_status.green, deviation.far_left, car_distance.medium], speed.slower);
+        let rule10 = fuzzy.add_rule(&[light_status.green, deviation.far_right, car_distance.far], speed.slower);
+        let rule10b = fuzzy.add_rule(&[light_status.green, deviation.far_right, car_distance.medium], speed.slower);
 
-        let rule11 = fuzzy.add_rule(&[distance.far, deviation.middle], speed.medium);
-        let rule12 = fuzzy.add_rule(&[distance.far, deviation.left], speed.slow);
-        let rule13 = fuzzy.add_rule(&[distance.far, deviation.right], speed.slow);
-        let rule14 = fuzzy.add_rule(&[distance.far, deviation.far_left], speed.slower);
-        let rule15 = fuzzy.add_rule(&[distance.far, deviation.far_right], speed.slower);
+        let rule11 = fuzzy.add_rule(&[distance.far, deviation.middle, car_distance.far], speed.medium);
+        let rule12 = fuzzy.add_rule(&[distance.far, deviation.left, car_distance.far], speed.slow);
+        let rule12b = fuzzy.add_rule(&[distance.far, deviation.left, car_distance.medium], speed.slower);
+        let rule13 = fuzzy.add_rule(&[distance.far, deviation.right, car_distance.far], speed.slow);
+        let rule13b = fuzzy.add_rule(&[distance.far, deviation.right, car_distance.medium], speed.slower);
+        let rule14 = fuzzy.add_rule(&[distance.far, deviation.far_left, car_distance.medium_far], speed.slower);
+        let rule15 = fuzzy.add_rule(&[distance.far, deviation.far_right, car_distance.medium_far], speed.slower);
 
-        let rule16 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.middle], speed.slow);
-        let rule17 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.left], speed.slower);
-        let rule18 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.right], speed.slower);
-        let rule19 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.far_left], speed.slower);
-        let rule20 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.far_right], speed.slower);
+        let rule16 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.middle, car_distance.far], speed.slow);
+        let rule16b = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.middle, car_distance.medium], speed.slower);
+        let rule17 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.left, car_distance.medium_far], speed.slower);
+        let rule17b = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.left, car_distance.medium_far], speed.slower);
+        let rule18 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.right, car_distance.medium_far], speed.slower);
+        let rule19 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.far_left, car_distance.medium_far], speed.slower);
+        let rule20 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.far_right, car_distance.medium_far], speed.slower);
 
         let rule21 = fuzzy.add_rule(&[light_status.yellow, distance.near], speed.stop);
 
-        let rule22 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.middle], speed.slow);
-        let rule23 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.left], speed.slower);
-        let rule24 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.right], speed.slower);
-        let rule25 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.far_left], speed.slower);
-        let rule26 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.far_right], speed.slower);
+        let rule22 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.middle, car_distance.far], speed.slow);
+        let rule22b = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.middle, car_distance.medium], speed.slower);
+        let rule23 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.left, car_distance.medium_far], speed.slower);
+        let rule24 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.right, car_distance.medium_far], speed.slower);
+        let rule25 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.far_left, car_distance.medium_far], speed.slower);
+        let rule26 = fuzzy.add_rule(&[light_status.red, distance.medium, deviation.far_right, car_distance.medium_far], speed.slower);
 
         let rule27 = fuzzy.add_rule(&[light_status.red, distance.near], speed.stop);
 
-        let rule28 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.middle], speed.medium);
-        let rule29 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.left], speed.slow);
-        let rule30 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.right], speed.slow);
-        let rule31 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.far_left], speed.slower);
-        let rule32 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.far_right], speed.slower);
+        let rule28 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.middle, car_distance.far], speed.medium);
+        let rule29 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.left, car_distance.far], speed.slow);
+        let rule29b = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.left, car_distance.medium], speed.slower);
+        let rule30 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.right, car_distance.far], speed.slow);
+        let rule30b = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.right, car_distance.medium], speed.slower);
+        let rule31 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.far_left, car_distance.medium_far], speed.slower);
+        let rule32 = fuzzy.add_rule(&[light_status.less_green, distance.medium, deviation.far_right, car_distance.medium_far], speed.slower);
 
-        let rule33 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.middle], speed.slower);
-        let rule34 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.left], speed.slower);
-        let rule35 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.right], speed.slower);
+        let rule33 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.middle, car_distance.medium_far], speed.slower);
+        let rule34 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.left, car_distance.medium_far], speed.slower);
+        let rule35 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.right, car_distance.medium_far], speed.slower);
         let rule36 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.far_left], speed.stop);
         let rule37 = fuzzy.add_rule(&[light_status.less_green, distance.near, deviation.far_right], speed.stop);
 
-        let rule38 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.middle], speed.slow);
-        let rule39 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.left], speed.slower);
-        let rule40 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.right], speed.slower);
-        let rule41 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.far_left], speed.slower);
-        let rule42 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.far_right], speed.slower);
+        let rule38 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.middle, car_distance.far], speed.slow);
+        let rule38b = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.middle, car_distance.medium], speed.slower);
+        let rule39 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.left, car_distance.medium_far], speed.slower);
+        let rule40 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.right, car_distance.medium_far], speed.slower);
+        let rule41 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.far_left, car_distance.medium_far], speed.slower);
+        let rule42 = fuzzy.add_rule(&[light_status.less_red, distance.medium, deviation.far_right, car_distance.medium_far], speed.slower);
         let rule43 = fuzzy.add_rule(&[light_status.less_red, distance.near, deviation.far_right], speed.stop);
 
         let rule44 = fuzzy.add_rule(&[car_distance.near], speed.stop);
-        let rule45 = fuzzy.add_rule(&[car_distance.medium, deviation.far_left], speed.slower);
-        let rule46 = fuzzy.add_rule(&[car_distance.medium, deviation.far_right], speed.slower);
-        let rule47 = fuzzy.add_rule(&[car_distance.medium, deviation.left], speed.slow);
-        let rule48 = fuzzy.add_rule(&[car_distance.medium, deviation.right], speed.slow);
-        let rule49 = fuzzy.add_rule(&[car_distance.medium, deviation.middle], speed.medium);
 
         let simple_rule_set = fuzzy.add_rule_set(
             &[
                 rule1, rule2, rule3, rule4, rule5,
-                rule6, rule7, rule8, rule9, rule10,
-                rule11, rule12, rule13, rule14, rule15,
-                rule16, rule17, rule18, rule19, rule20,
-                rule21, rule22, rule23, rule24, rule25, rule26,
-                rule27, rule28, rule29, rule30, rule31, rule32,
+                rule6, rule7, rule7b, rule8, rule8b, rule9, rule9b, rule10, rule10b,
+                rule11, rule12, rule12b, rule13, rule13b, rule14, rule15,
+                rule16, rule16b, rule17, rule17b, rule18, rule19, rule20,
+                rule21, rule22, rule22b, rule23, rule24, rule25, rule26,
+                rule27, rule28, rule29, rule29b, rule30, rule30b, rule31, rule32,
                 rule33, rule34, rule35, rule36, rule37,
-                rule38, rule39, rule40, rule41, rule42, rule43,
-                rule44, rule45, rule46, rule47, rule48, rule49,
+                rule38, rule38b, rule39, rule40, rule41, rule42, rule43,
+                rule44,
             ]);
 
         Self {

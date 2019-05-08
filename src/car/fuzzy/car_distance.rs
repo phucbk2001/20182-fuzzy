@@ -3,8 +3,8 @@ use super::*;
 impl CarDistance {
 
     fn near_fn(x: f32) -> f32 {
-        let x1 = 10.0;
-        let x2 = 40.0;
+        let x1 = 5.0;
+        let x2 = 10.0;
         if x < x1 {
             1.0
         }
@@ -17,10 +17,10 @@ impl CarDistance {
     }
 
     fn medium_fn(x: f32) -> f32 {
-        let x1 = 10.0;
-        let x2 = 20.0;
-        let x3 = 50.0;
-        let x4 = 70.0;
+        let x1 = 5.0;
+        let x2 = 10.0;
+        let x3 = 25.0;
+        let x4 = 30.0;
         if x < x1 {
             0.0
         }
@@ -39,8 +39,22 @@ impl CarDistance {
     }
 
     fn far_fn(x: f32) -> f32 {
-        let x1 = 40.0;
-        let x2 = 70.0;
+        let x1 = 20.0;
+        let x2 = 25.0;
+        if x < x1 {
+            0.0
+        }
+        else if x < x2 {
+            (x - x1) / (x2 - x1)
+        }
+        else {
+            1.0
+        }
+    }
+
+    fn medium_far_fn(x: f32) -> f32 {
+        let x1 = 5.0;
+        let x2 = 10.0;
         if x < x1 {
             0.0
         }
@@ -64,11 +78,15 @@ impl CarDistance {
         let far = fuzzy.add_input_set(
             input, Box::new(CarDistance::far_fn));
 
+        let medium_far = fuzzy.add_input_set(
+            input, Box::new(CarDistance::medium_far_fn));
+
         Self {
             input,
             near,
             medium,
             far,
+            medium_far,
         }
     }
 }

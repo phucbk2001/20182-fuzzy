@@ -14,6 +14,7 @@ pub struct PathProperties {
     pub left_beziers: Vec<Bezier>,
     pub right_beziers: Vec<Bezier>,
     pub street_lights: Vec<(LaneId, Point)>,
+    pub path: Vec<LocationId>,
 }
 
 fn path_to_lanes(path: &[LocationId]) 
@@ -172,6 +173,7 @@ impl PathProperties {
             left_beziers,
             right_beziers,
             street_lights,
+            path: path.to_vec(),
         }
     }
 
@@ -225,6 +227,7 @@ impl Default for PathProperties {
             left_beziers: Vec::new(),
             right_beziers: Vec::new(),
             street_lights: Vec::new(),
+            path: Vec::new(),
         }
     }
 }
