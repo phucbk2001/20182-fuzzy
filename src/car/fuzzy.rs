@@ -4,8 +4,37 @@ mod distance;
 mod speed;
 mod light_status;
 mod car_distance;
+mod car_velocity;
+mod car_opposite_distance;
+mod car_opposite_velocity;
+mod road_deviation;
+mod booleans;
 
 use crate::fuzzy::*;
+
+fn true_fn(x: f32) -> f32 {
+    if x < 0.0 {
+        0.0
+    }
+    else if x < 1.0 {
+        x
+    }
+    else {
+        1.0
+    }
+}
+
+fn false_fn(x: f32) -> f32 {
+    if x < 0.0 {
+        1.0
+    }
+    else if x < 1.0 {
+        1.0 - x
+    }
+    else {
+        0.0
+    }
+}
 
 pub struct Deviation {
     pub input: InputId,
@@ -40,6 +69,32 @@ pub struct CarDistance {
     medium_far: InputSetId,
 }
 
+pub struct CarVeclocity {
+    pub input: InputId,
+    slow: InputSetId,
+    medium: InputSetId,
+}
+
+pub struct CarOppositeDistance {
+    pub input: InputId,
+    near: InputSetId,
+    far: InputSetId,
+}
+
+pub struct CarOppositeVelocity {
+    pub input: InputId,
+    slow: InputSetId,
+    medium: InputSetId,
+}
+
+pub struct RoadDeviation {
+    pub input: InputId,
+    far_left: InputSetId,
+    middle_left: InputSetId,
+    middle: InputSetId,
+    right: InputSetId,
+}
+
 // Output Fuzzy Sets
 
 pub struct Steering {
@@ -59,6 +114,30 @@ pub struct Speed {
     medium: OutputSetId,
 }
 
+pub struct GoLeftLane {
+    pub output: OutputId,
+    true_: OutputSetId,
+    false_: OutputSetId,
+}
+
+pub struct StayLeftLane {
+    pub output: OutputId,
+    true_: OutputSetId,
+    false_: OutputSetId,
+}
+
+pub struct BackToRightLane {
+    pub output: OutputId,
+    true_: OutputSetId,
+    false_: OutputSetId,
+}
+
+pub struct GoNormal {
+    pub output: OutputId,
+    true_: OutputSetId,
+    false_: OutputSetId,
+}
+
 pub struct CarFuzzy {
     pub fuzzy: Fuzzy,
 
@@ -68,8 +147,21 @@ pub struct CarFuzzy {
     pub speed: Speed,
     pub light_status: LightStatus,
     pub car_distance: CarDistance,
+    pub car_velocity: CarVeclocity,
+    pub car_opposite_distance: CarOppositeDistance,
+    pub car_opposite_velocity: CarOppositeVelocity,
+    pub road_deviation: RoadDeviation,
+
+    pub go_left_lane: GoLeftLane,
+    pub stay_left_lane: StayLeftLane,
+    pub back_to_right_lane: BackToRightLane,
+    pub go_normal: GoNormal,
 
     pub simple_rule_set: RuleSetId,
+    pub normal_rule_set: RuleSetId,
+    pub go_left_lane_rule_set: RuleSetId,
+    pub stay_left_lane_rule_set: RuleSetId,
+    pub back_to_right_lane_rule_set: RuleSetId,
 }
 
 
@@ -83,6 +175,14 @@ impl CarFuzzy {
         let speed = Speed::new(&mut fuzzy);
         let light_status = LightStatus::new(&mut fuzzy);
         let car_distance = CarDistance::new(&mut fuzzy);
+        let car_velocity = CarVeclocity::new(&mut fuzzy);
+        let car_opposite_distance = CarOppositeDistance::new(&mut fuzzy);
+        let car_opposite_velocity = CarOppositeVelocity::new(&mut fuzzy);
+        let road_deviation = RoadDeviation::new(&mut fuzzy);
+        let go_left_lane = GoLeftLane::new(&mut fuzzy);
+        let stay_left_lane = StayLeftLane::new(&mut fuzzy);
+        let back_to_right_lane = BackToRightLane::new(&mut fuzzy);
+        let go_normal = GoNormal::new(&mut fuzzy);
 
         let rule1 = fuzzy.add_rule(&[deviation.far_left], steering.hard_right);
         let rule2 = fuzzy.add_rule(&[deviation.left], steering.right);
@@ -111,7 +211,6 @@ impl CarFuzzy {
         let rule16 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.middle, car_distance.far], speed.slow);
         let rule16b = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.middle, car_distance.medium], speed.slower);
         let rule17 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.left, car_distance.medium_far], speed.slower);
-        let rule17b = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.left, car_distance.medium_far], speed.slower);
         let rule18 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.right, car_distance.medium_far], speed.slower);
         let rule19 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.far_left, car_distance.medium_far], speed.slower);
         let rule20 = fuzzy.add_rule(&[light_status.yellow, distance.medium, deviation.far_right, car_distance.medium_far], speed.slower);
@@ -156,12 +255,37 @@ impl CarFuzzy {
                 rule1, rule2, rule3, rule4, rule5,
                 rule6, rule7, rule7b, rule8, rule8b, rule9, rule9b, rule10, rule10b,
                 rule11, rule12, rule12b, rule13, rule13b, rule14, rule15,
-                rule16, rule16b, rule17, rule17b, rule18, rule19, rule20,
+                rule16, rule16b, rule17, rule18, rule19, rule20,
                 rule21, rule22, rule22b, rule23, rule24, rule25, rule26,
                 rule27, rule28, rule29, rule29b, rule30, rule30b, rule31, rule32,
                 rule33, rule34, rule35, rule36, rule37,
                 rule38, rule38b, rule39, rule40, rule41, rule42, rule43,
                 rule44,
+            ]);
+
+        let normal_rule_set = fuzzy.add_rule_set(
+            &[
+                rule1, rule2, rule3, rule4, rule5,
+                rule6, rule7, rule7b, rule8, rule8b, rule9, rule9b, rule10, rule10b,
+                rule11, rule12, rule12b, rule13, rule13b, rule14, rule15,
+                rule16, rule16b, rule17, rule18, rule19, rule20,
+                rule21, rule22, rule22b, rule23, rule24, rule25, rule26,
+                rule27, rule28, rule29, rule29b, rule30, rule30b, rule31, rule32,
+                rule33, rule34, rule35, rule36, rule37,
+                rule38, rule38b, rule39, rule40, rule41, rule42, rule43,
+                rule44,
+            ]);
+
+        let go_left_lane_rule_set = fuzzy.add_rule_set(
+            &[
+            ]);
+
+        let stay_left_lane_rule_set = fuzzy.add_rule_set(
+            &[
+            ]);
+
+        let back_to_right_lane_rule_set = fuzzy.add_rule_set(
+            &[
             ]);
 
         Self {
@@ -173,8 +297,21 @@ impl CarFuzzy {
             speed,
             light_status,
             car_distance,
+            car_velocity,
+            car_opposite_distance,
+            car_opposite_velocity,
+            road_deviation,
+
+            go_left_lane,
+            stay_left_lane,
+            back_to_right_lane,
+            go_normal,
 
             simple_rule_set,
+            normal_rule_set,
+            go_left_lane_rule_set,
+            stay_left_lane_rule_set,
+            back_to_right_lane_rule_set,
         }
     }
 }

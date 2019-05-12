@@ -6,7 +6,7 @@ use super::{
 use bezier::{Bezier, Point, Line, dot};
 
 const MAX_INTERSECT_DISTANCE: f32 = 100.0;
-const FAR_POINT: Point = Point { x: 100000.0, y: 100000.0 };
+const FAR_POINT_DISTANCE: f32 = 100000.0;
 const MAX_STREET_LIGHT_ANGLE: f32 = 60.0;
 
 #[derive(Clone)]
@@ -213,9 +213,14 @@ impl PathProperties {
         let nearest_far_left = intersect_line_beziers(
             line, &self.far_left_beziers);
 
-        let nearest_left = nearest_left.unwrap_or(FAR_POINT);
-        let nearest_right = nearest_right.unwrap_or(FAR_POINT);
-        let nearest_far_left = nearest_far_left.unwrap_or(FAR_POINT);
+        let dir = line.direction;
+        let pos = line.position;
+        let nearest_left = nearest_left.unwrap_or(
+            pos - FAR_POINT_DISTANCE * dir);
+        let nearest_right = nearest_right.unwrap_or(
+            pos + FAR_POINT_DISTANCE * dir);
+        let nearest_far_left = nearest_far_left.unwrap_or(
+            pos - FAR_POINT_DISTANCE * dir);
 
         (nearest_left, nearest_right, nearest_far_left)
     }

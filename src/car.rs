@@ -278,8 +278,10 @@ impl Car {
         };
         let (left, right, _far_left) = self.path_properties
             .nearest_intersection(line);
-        let dx = (left - pos).len() - config.car_width / 2.0;
-        let dy = (right - pos).len() - config.car_width / 2.0;
+
+        let dir = line.direction;
+        let dx = -bezier::dot(left - pos, dir) - config.car_width / 2.0;
+        let dy = bezier::dot(right - pos, dir) - config.car_width / 2.0;
 
         fuzzy.fuzzy.set_input(fuzzy.deviation.input, dx / (dx + dy));
     }
