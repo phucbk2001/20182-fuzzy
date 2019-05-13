@@ -46,6 +46,7 @@ pub struct Car {
     pub starting: Point,
     pub destination: Point,
     followed_car: Option<ecs::Entity<ForCar>>,
+    is_turning_back: bool,
 
     pub path_properties: road::PathProperties,
 }
@@ -90,6 +91,7 @@ impl Default for Car {
             starting: Point { x: 0.0, y: 0.0 },
             destination: Point { x: 100.0, y: 100.0 },
             followed_car: None,
+            is_turning_back: false,
 
             path_properties: road::PathProperties::default(),
         }
@@ -235,6 +237,7 @@ impl Car {
             starting: pos,
             destination: dest,
             followed_car: None,
+            is_turning_back: false,
 
             path_properties,
         }
@@ -273,6 +276,7 @@ impl Car {
             starting: a,
             destination: b,
             followed_car: None,
+            is_turning_back: false,
 
             path_properties,
         })
@@ -297,7 +301,7 @@ impl Car {
         self.direction = output.direction;
     }
 
-    fn fuzzy_set_deviation(&self, fuzzy: &mut CarFuzzy, config: &Config) {
+    fn fuzzy_set_deviation(&mut self, fuzzy: &mut CarFuzzy, config: &Config) {
         let pos = self.position + self.direction * (config.car_width / 2.0);
         let line = bezier::Line { 
             position: pos,
@@ -305,6 +309,8 @@ impl Car {
         };
         let (left, right, far_left) = self.path_properties
             .nearest_intersection(line);
+
+        self.is_turning_back = approx_eq(right, far_left);
 
         let dir = line.direction;
         let dx = -bezier::dot(left - pos, dir) - config.car_width / 2.0;
@@ -439,7 +445,7 @@ impl Car {
                         fuzzy.fuzzy.evaluate(fuzzy.normal_rule_set);
 
                         let output = fuzzy.fuzzy.get_output(fuzzy.go_left_lane.output);
-                        if output > 0.5 {
+                        if output > 0.5 && !self.is_turning_back {
                             self.followed_car =
                                 if let Some(nearest_car) = nearest_car {
                                     Some(nearest_car.nearest_car)
