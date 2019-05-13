@@ -16,6 +16,20 @@ impl CarDistance {
         }
     }
 
+    fn near_medium_fn(x: f32) -> f32 {
+        let x1 = 10.0;
+        let x2 = 20.0;
+        if x < x1 {
+            1.0
+        }
+        else if x < x2 {
+            (x2 - x) / (x2 - x1)
+        }
+        else {
+            0.0
+        }
+    }
+
     fn medium_fn(x: f32) -> f32 {
         let x1 = 5.0;
         let x2 = 10.0;
@@ -72,6 +86,9 @@ impl CarDistance {
         let near = fuzzy.add_input_set(
             input, Box::new(CarDistance::near_fn));
 
+        let near_medium = fuzzy.add_input_set(
+            input, Box::new(CarDistance::near_medium_fn));
+
         let medium = fuzzy.add_input_set(
             input, Box::new(CarDistance::medium_fn));
 
@@ -84,6 +101,7 @@ impl CarDistance {
         Self {
             input,
             near,
+            near_medium,
             medium,
             far,
             medium_far,

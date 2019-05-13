@@ -205,7 +205,7 @@ fn update_lights(location: &mut Location, dt: f32, config: &Config) {
     let (index, color, new_time) = match location.street_light_color {
         Green => {
             if time == 0.0 {
-                let new_time = 2.0;
+                let new_time = 1.0;
                 (index, YellowToRed, new_time)
             }
             else {
@@ -214,7 +214,7 @@ fn update_lights(location: &mut Location, dt: f32, config: &Config) {
         },
         YellowToRed => {
             if time == 0.0 {
-                let new_time = 2.0;
+                let new_time = 1.0;
                 (next_index(index), RedToYellow, new_time)
             }
             else {
@@ -223,7 +223,7 @@ fn update_lights(location: &mut Location, dt: f32, config: &Config) {
         },
         RedToYellow => {
             if time == 0.0 {
-                let new_time = 2.0;
+                let new_time = 1.0;
                 (index, YellowToGreen, new_time)
             }
             else {

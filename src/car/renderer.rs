@@ -149,7 +149,7 @@ impl CarRenderer {
 
     fn get_texture(&self, car_type: CarType) -> &Texture2d {
         match car_type {
-            CarType::Normal => &self.textures[0],
+            CarType::Normal(_) => &self.textures[0],
             CarType::Slow => &self.textures[1],
         }
     }

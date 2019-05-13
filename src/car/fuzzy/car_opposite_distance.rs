@@ -2,8 +2,8 @@ use super::*;
 
 impl CarOppositeDistance {
     fn near_fn(x: f32) -> f32 {
-        let x1 = 30.0;
-        let x2 = 40.0;
+        let x1 = 20.0;
+        let x2 = 30.0;
         if x < x1 {
             1.0
         }
@@ -16,8 +16,8 @@ impl CarOppositeDistance {
     }
 
     fn far_fn(x: f32) -> f32 {
-        let x1 = 30.0;
-        let x2 = 50.0;
+        let x1 = 20.0;
+        let x2 = 40.0;
         if x < x1 {
             0.0
         }

@@ -3,8 +3,7 @@ use crate::action::{
     Action, 
     CameraAction,
 };
-use crate::car::Car;
-use crate::car::CarType;
+use crate::car::{Car, CarType, CarState};
 
 fn camera_reducer(
     context: &mut Context, 
@@ -71,7 +70,8 @@ pub fn reduce(
             },
             Action::AddCar => {
                 context.car_system.add_car = Adding;
-                context.car_system.add_car_type = CarType::Normal;
+                let car_type = CarType::Normal(CarState::GoNormal);
+                context.car_system.add_car_type = car_type;
             },
             Action::AddCarSlow => {
                 context.car_system.add_car = Adding;
