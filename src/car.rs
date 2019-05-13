@@ -16,6 +16,7 @@ use std::time::{Instant};
 const DESTINATION_EFFECTIVE_RANGE: f32 = 1.2;
 const NEAREST_CAR_POSITION_ANGLE: f32 = 60.0;
 const NEAREST_CAR_DIRECTION_ANGLE: f32 = 90.0;
+const FIND_RADIUS: f32 = 3.0;
 
 #[derive(Copy, Clone)]
 pub struct ForCar {}
@@ -747,5 +748,16 @@ impl CarSystem {
 
     pub fn finish(&mut self) {
         self.old_chosen_car = self.chosen_car;
+    }
+
+    pub fn find_car_near(&self, p: Point) -> Option<ecs::Entity<ForCar>> {
+        for (e, car) in self.cars.iter() {
+            if self.em.is_alive(*e) {
+                if (car.position - p).len() < FIND_RADIUS {
+                    return Some(*e);
+                }
+            }
+        }
+        None
     }
 }

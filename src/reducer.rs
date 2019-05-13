@@ -48,7 +48,11 @@ pub fn reduce(
                 let p = context.camera.screen_coords_to_real_position(x as f32, y as f32);
                 context.car_system.add_car =
                     match context.car_system.add_car {
-                        Nope => Nope,
+                        Nope => {
+                            let car = context.car_system.find_car_near(p);
+                            context.car_system.chosen_car = car;
+                            Nope
+                        },
                         Adding => AddedPoint(p),
                         AddedPoint(prev_pos) => {
                             let car_type = context.car_system.add_car_type;
